@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lume</title>
+<meta name="theme-color" content="#1E2A78">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lume"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap">
+<script>
+  // tema salvo no aparelho (modo claro/escuro + paleta) antes de desenhar, sem piscar
+  try { var m = localStorage.getItem('lume-modo'), p = localStorage.getItem('lume-paleta'), r = document.documentElement;
+    if (m === 'claro' || m === 'escuro') r.setAttribute('data-modo', m);
+    if (/^(oceano|floresta|aurora|lavanda)$/.test(p || '')) r.setAttribute('data-paleta', p); } catch (e) {}
+</script>
+<style>
+  /* =====================  tokens (mesmos do Lume)  ===================== */
+  :root {
+    --brand: #1E2A78; --accent: #F5A623; --a3: #7b5cff; --brand-txt: var(--brand);
+    --bg: #eef0f7; --card: #ffffff; --ink: #1d2433; --muted: #5f6b7d; --line: #d9dded; --glow: .35; --vidro: rgba(255,255,255,.74);
+    --good: #0b8a3e; --warning: #b26a00; --critical: #c62828;
+    --logo-azul: #1E2A78; --logo-laranja: #F5A623;
+    --f-disp: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --f-body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --topo: 64px;
+  }
+  html[data-paleta="oceano"]   { --brand: #0b6fa8; --accent: #18c6b0; --a3: #3d5afe; }
+  html[data-paleta="floresta"] { --brand: #1d7a45; --accent: #b8cf2a; --a3: #0f9d8a; }
+  html[data-paleta="aurora"]   { --brand: #b0186f; --accent: #ff8a3d; --a3: #8e44ff; }
+  html[data-paleta="lavanda"]  { --brand: #5b3fd0; --accent: #ff6fae; --a3: #39b6ff; }
+  @media (prefers-color-scheme: dark) { html:not([data-modo="claro"]) {
+    --bg: #0b0e1c; --card: #141a33; --ink: #eef0ff; --muted: #a1a9cc; --line: #283058; --glow: .7; --vidro: rgba(20,26,51,.74);
+    --brand-txt: color-mix(in srgb, var(--brand) 45%, #ffffff); --good: #4cd17f; --warning: #ffb547; --critical: #ff6b6b; color-scheme: dark; } }
+  html[data-modo="escuro"] {
+    --bg: #0b0e1c; --card: #141a33; --ink: #eef0ff; --muted: #a1a9cc; --line: #283058; --glow: .7; --vidro: rgba(20,26,51,.74);
+    --brand-txt: color-mix(in srgb, var(--brand) 45%, #ffffff); --good: #4cd17f; --warning: #ffb547; --critical: #ff6b6b; color-scheme: dark; }
+
+  /* =====================  base  ===================== */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 16px/1.5 var(--f-body); color: var(--ink); min-height: 100vh;
+    background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--a3) 14%, transparent), transparent 60%),
+      radial-gradient(80% 50% at 0% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
+  h1, h2, h3 { font-family: var(--f-disp); letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .hidden { display: none !important; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .wrap > section, .area-res, .sec-avs, .card, .form { min-width: 0; }
+  .wrap > section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .desc-li p, .grupo p, .grupo li, .ajuda { overflow-wrap: anywhere; }
+  .ajuda { color: var(--muted); font-size: 14px; margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 6px 20px color-mix(in srgb, var(--brand) 8%, transparent); }
+  .card h2 { font-size: 20px; margin-bottom: 6px; }
+
+  /* topo */
+  header.top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+    color: #fff; background: linear-gradient(120deg, var(--brand), color-mix(in srgb, var(--brand) 70%, var(--a3))); box-shadow: 0 6px 20px color-mix(in srgb, var(--brand) 30%, transparent); }
+  header.top h1 { flex: 1; min-width: 0; font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-topo { flex: none; height: 40px; min-width: 40px; padding: 0 12px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.5); background: rgba(255,255,255,.08);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 700; font-size: 14px; }
+  .btn-topo:hover { background: rgba(255,255,255,.18); }
+  .btn-topo svg { width: 20px; height: 20px; }
+  .escola-mini { width: 32px; height: 32px; border-radius: 9px; object-fit: cover; background: #fff; flex: none; }
+  body[data-tela="tela-entrar"] header.top, body[data-tela="tela-carregando"] header.top { display: none; }
+
+  /* botões e campos */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 16px; border-radius: 14px; border: 1.5px solid var(--line);
+    background: var(--card); color: var(--ink); font-weight: 700; cursor: pointer; transition: transform .15s, box-shadow .2s, border-color .2s; }
+  .btn:hover { border-color: var(--brand-txt); }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn-pri { border-color: transparent; color: #fff; background: linear-gradient(110deg, var(--brand), color-mix(in srgb, var(--brand) 60%, var(--a3)));
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--brand) calc(var(--glow) * 80%), transparent); }
+  .btn-perigo { border-color: transparent; color: #fff; background: var(--critical); }
+  .btn-link { background: none; border: 0; padding: 4px; color: var(--brand-txt); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .btn-peq { padding: 7px 11px; font-size: 14px; border-radius: 11px; }
+  :focus-visible { outline: 3px solid color-mix(in srgb, var(--brand-txt) 60%, transparent); outline-offset: 2px; }
+  .campo { display: grid; gap: 5px; }
+  .campo label { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .campo input, .campo select, .campo textarea { width: 100%; padding: 12px 14px; border-radius: 13px; border: 1.5px solid var(--line); background: var(--bg); outline: none; }
+  .campo input:focus, .campo select:focus, .campo textarea:focus { border-color: var(--brand-txt); background: var(--card); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent); }
+  .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .linha > .campo { flex: 1 1 140px; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .erro { color: var(--critical); font-weight: 600; font-size: 14px; margin: 0; }
+  .form { display: grid; gap: 12px; }
+
+  /* =====================  entrada  ===================== */
+  .entrada { display: grid; gap: 16px; justify-items: center; text-align: center; padding-top: 24px; }
+  .lg-logo { position: relative; width: 108px; height: 108px; border-radius: 30px; display: grid; place-items: center; cursor: pointer;
+    background: var(--logo-azul); box-shadow: 0 18px 46px rgba(30,42,120,.42); }
+  .lg-logo svg { overflow: visible; }
+  .lg-nome { font: 800 clamp(44px, 13vw, 60px)/1 var(--f-disp); letter-spacing: -.04em; color: var(--brand-txt); }
+  .lg-frase { margin: -4px 0 0; color: var(--muted); max-width: 38ch; }
+  .entrada .card { width: 100%; max-width: 420px; text-align: left; }
+  .abas { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--bg); margin-bottom: 14px; }
+  .abas button { border: 0; background: none; padding: 9px; border-radius: 11px; font-weight: 700; color: var(--muted); cursor: pointer; }
+  .abas button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .demo { width: 100%; max-width: 420px; text-align: left; border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, var(--line)); border-radius: 16px; padding: 12px 14px; font-size: 14px; background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+  .demo b { font-family: var(--f-disp); }
+  .demo code { font-size: 13px; }
+
+  /* =====================  início  ===================== */
+  .ola { display: grid; gap: 4px; }
+  .ola h2 { font-size: 26px; font-weight: 800; }
+  .ola .papel { color: var(--muted); font-weight: 600; }
+  .atalhos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .atalho { --cor: var(--brand); position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; text-align: left;
+    padding: 18px; border-radius: 22px; border: 1.5px solid color-mix(in srgb, var(--cor) 25%, var(--line)); cursor: pointer; color: var(--ink);
+    background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--cor) 14%, transparent), transparent 60%), var(--card);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--cor) 10%, transparent); transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .3s; }
+  .atalho:hover { transform: translateY(-3px); box-shadow: 0 16px 34px color-mix(in srgb, var(--cor) calc(var(--glow) * 80%), transparent); }
+  .atalho .ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: #fff; font-size: 24px;
+    background: linear-gradient(140deg, var(--cor), color-mix(in srgb, var(--cor) 55%, var(--a3))); box-shadow: 0 8px 18px color-mix(in srgb, var(--cor) 35%, transparent); }
+  .atalho h3 { font-size: 19px; }
+  .atalho p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .atalho .selo { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--cor); }
+  .atalho.c-mon { --cor: var(--brand-txt); } .atalho.c-apoio { --cor: var(--a3); } .atalho.c-flu { --cor: var(--accent); }
+  .atalho.c-adm { --cor: color-mix(in srgb, var(--a3) 45%, var(--brand-txt)); } .atalho.c-sup { --cor: color-mix(in srgb, var(--accent) 50%, var(--a3)); }
+
+  /* =====================  turmas (cards por ano, cores da paleta)  ===================== */
+  .turmas-lista { display: grid; gap: 18px; }
+  [data-ano="1"] { --cor: var(--accent); }
+  [data-ano="2"] { --cor: color-mix(in srgb, var(--accent) 50%, var(--a3)); }
+  [data-ano="3"] { --cor: var(--a3); }
+  [data-ano="4"] { --cor: color-mix(in srgb, var(--a3) 45%, var(--brand-txt)); }
+  [data-ano="5"] { --cor: var(--brand-txt); }
+  [data-ano="6"] { --cor: color-mix(in srgb, var(--brand-txt) 50%, var(--accent)); }
+  [data-ano="7"] { --cor: color-mix(in srgb, var(--accent) 70%, var(--brand-txt)); }
+  [data-ano="8"] { --cor: color-mix(in srgb, var(--a3) 70%, var(--accent)); }
+  [data-ano="9"] { --cor: color-mix(in srgb, var(--brand-txt) 70%, var(--a3)); }
+  [data-ano="m1"] { --cor: color-mix(in srgb, var(--accent) 60%, var(--brand-txt)); }
+  [data-ano="m2"] { --cor: color-mix(in srgb, var(--a3) 60%, var(--accent)); }
+  [data-ano="m3"] { --cor: color-mix(in srgb, var(--brand-txt) 60%, var(--a3)); }
+  [data-ano="m4"] { --cor: color-mix(in srgb, var(--accent) 40%, var(--a3)); }
+  .bloco-ano { display: grid; gap: 10px; }
+  .bloco-ano-tit { display: flex; align-items: center; gap: 10px; }
+  .bloco-ano-selo { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: #fff; font: 800 15px var(--f-disp);
+    background: linear-gradient(135deg, var(--cor), color-mix(in srgb, var(--cor) 60%, var(--a3))); box-shadow: 0 6px 16px color-mix(in srgb, var(--cor) 35%, transparent); }
+  .bloco-ano-tit h3 { font-size: 19px; }
+  .bloco-ano-tit small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .bloco-ano-linha { flex: 1; height: 2px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--cor) 55%, transparent), transparent); }
+  .bloco-ano-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tc { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 11px; text-align: left; color: var(--ink); cursor: pointer;
+    padding: 12px; border-radius: 20px; border: 1.5px solid color-mix(in srgb, var(--cor) 28%, var(--line));
+    background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--cor) 16%, transparent), transparent 60%), var(--card);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--cor) 10%, transparent); transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .3s; }
+  .tc-letra { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; color: #fff; font: 800 24px/1 var(--f-disp);
+    background: linear-gradient(140deg, var(--cor), color-mix(in srgb, var(--cor) 55%, var(--a3))); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px color-mix(in srgb, var(--cor) 38%, transparent); }
+  .tc-letra.longa { font-size: 17px; }
+  .tc-tx { min-width: 0; display: grid; gap: 1px; }
+  .tc-tx b { font: 800 18px/1.1 var(--f-disp); }
+  .tc-tx small { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tc-ano { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, var(--cor) 80%, var(--ink)); }
+  .tc::after { content: "→"; position: absolute; right: 10px; top: 10px; font-size: 13px; color: var(--cor); opacity: .8; }
+  .tc:hover, .tc:focus-visible { transform: translateY(-3px); border-color: var(--cor); box-shadow: 0 14px 30px color-mix(in srgb, var(--cor) calc(var(--glow) * 90%), transparent); }
+
+  /* listas */
+  .lista { list-style: none; margin: 0; padding: 0; display: grid; }
+  .lista li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .lista li:last-child { border-bottom: 0; }
+  .lista .n { width: 30px; flex: none; font: 800 15px var(--f-disp); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .lista .nome { flex: 1; min-width: 0; }
+  .lista .nome small { display: block; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .lista .inativo { opacity: .5; text-decoration: line-through; }
+  .etq { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand-txt); }
+  .etq.gestor { background: color-mix(in srgb, var(--accent) 22%, transparent); color: color-mix(in srgb, var(--accent) 55%, var(--ink)); }
+  .etq.off { background: color-mix(in srgb, var(--critical) 14%, transparent); color: var(--critical); }
+  .vazio { color: var(--muted); text-align: center; padding: 18px; }
+
+  /* abas da administração */
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); scrollbar-width: none; position: sticky; top: var(--topo); z-index: 5; }
+  .chips button { flex: none; border: 0; background: none; padding: 8px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); cursor: pointer; }
+  .chips button[aria-selected="true"] { color: #fff; background: linear-gradient(100deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--a3))); }
+  .marcas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .marcas label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 6px 10px; border-radius: 999px; border: 1.5px solid var(--line); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .marcas input { accent-color: var(--brand); }
+  .logo-prev { width: 84px; height: 84px; border-radius: 20px; object-fit: cover; border: 1px solid var(--line); background: var(--bg); }
+
+  /* modal e aviso */
+  .modal-fundo { position: fixed; inset: 0; z-index: 50; background: rgba(5,8,20,.55); display: grid; place-items: end center; padding: 16px; }
+  @media (min-width: 640px) { .modal-fundo { place-items: center; } }
+  .modal { width: 100%; max-width: 460px; max-height: 88vh; overflow: auto; background: var(--card); color: var(--ink); border-radius: 24px; padding: 20px; display: grid; gap: 12px; box-shadow: 0 30px 70px rgba(0,0,0,.35); }
+  .modal h2 { font-size: 22px; }
+  .aviso { position: fixed; z-index: 60; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: calc(100vw - 32px);
+    padding: 12px 18px; border-radius: 14px; background: var(--ink); color: var(--bg); font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+  .aviso.err { background: var(--critical); color: #fff; }
+
+  /* painel de temas */
+  .painel-tema { position: fixed; z-index: 40; right: 14px; top: calc(70px + env(safe-area-inset-top)); width: min(340px, calc(100vw - 28px)); background: var(--card); border: 1px solid var(--line);
+    border-radius: 20px; padding: 18px; display: grid; gap: 10px; box-shadow: 0 24px 60px rgba(0,0,0,.28); }
+  .painel-tema .rot { font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; }
+  .modos button { border: 0; background: none; padding: 8px 4px; border-radius: 9px; font-weight: 700; color: var(--muted); cursor: pointer; }
+  .modos button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .paletas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .sw-tema { border: 2px solid var(--line); border-radius: 12px; padding: 6px 2px; background: var(--bg); cursor: pointer; display: grid; gap: 4px; justify-items: center; font-size: 11px; font-weight: 700; color: var(--muted); }
+  .sw-tema i { width: 26px; height: 26px; border-radius: 50%; }
+  .sw-tema[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+  .tema-flutua { position: fixed; z-index: 30; top: calc(12px + env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); width: 42px; height: 42px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink); display: none; place-items: center; cursor: pointer; }
+  .tema-flutua svg { width: 20px; height: 20px; }
+  body[data-tela="tela-entrar"] .tema-flutua { display: grid; }
+
+  @media (max-width: 480px) { .btn-topo .rot-voltar { display: none; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  /* logo: o L fica parado; a bolinha cai ao abrir e depois acende um feixe de luz (lume) que varre o L
+     de cima para baixo e revela a palavra EDUCATION escrita ao longo da letra (ciclo de 6 s) */
+  .lg-logo svg { width: 74px; height: 74px; }
+  .l-ponto { transform-box: fill-box; transform-origin: 50% 50%; animation: v26-cai 1.1s linear .2s both, v61-acende 6s ease-in-out 1.3s infinite; }
+  @keyframes v26-cai {
+    0%   { transform: translateY(-14px) scale(.9, 1.1); animation-timing-function: cubic-bezier(.5,0,1,.6); }
+    40%  { transform: translateY(0) scale(1.25, .75); animation-timing-function: cubic-bezier(0,.4,.5,1); }
+    58%  { transform: translateY(-5px) scale(.92, 1.08); animation-timing-function: cubic-bezier(.5,0,1,.6); }
+    74%  { transform: translateY(0) scale(1.12, .88); animation-timing-function: cubic-bezier(0,.4,.5,1); }
+    86%  { transform: translateY(-1.4px) scale(1); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  @keyframes v61-acende { 0%, 100% { transform: none; filter: none; } 4%, 30% { transform: scale(1.12); filter: drop-shadow(0 0 1.2px #FFD27A); } 40% { transform: none; filter: none; } }
+  .l-feixe { transform-box: view-box; transform-origin: 16.2px 8.4px; transform: rotate(202deg); opacity: 0; filter: drop-shadow(0 0 .8px #FFD27A);
+    animation: v61-feixe 6s linear 1.3s infinite; }
+  @keyframes v61-feixe {
+    0% { transform: rotate(202deg); opacity: 0; }
+    4% { transform: rotate(188.3deg); opacity: 1; }
+    33.3% { transform: rotate(88deg); opacity: 1; }
+    40%, 100% { transform: rotate(84deg); opacity: 0; }
+  }
+  .l-letra { font: 800 2.35px/1 var(--f-disp), system-ui, sans-serif; fill: #1E2A78; text-anchor: middle; dominant-baseline: central; opacity: 0;
+    animation: v61-letra 6s ease-out infinite; }
+  @keyframes v61-letra {
+    0% { opacity: 0; fill: #F5A623; }
+    3% { opacity: 1; fill: #F5A623; }
+    12% { fill: #1E2A78; }
+    72% { opacity: 1; fill: #1E2A78; }
+    82%, 100% { opacity: 0; fill: #1E2A78; }
+  }
+  @media (prefers-reduced-motion: reduce) { .l-feixe { display: none; } .l-letra { animation: none; opacity: 1; } .l-ponto { animation: none; } }
+
+
+  /* =====================  fase 2: avaliações  ===================== */
+  .sec-avs { display: grid; gap: 12px; }
+  .sec-tit { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sec-tit h2 { font-size: 22px; }
+  .avs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .av { display: grid; gap: 10px; }
+  .av-topo h3 { font-size: 18px; }
+  .av-topo small { color: var(--muted); font-weight: 600; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .nums div { display: grid; }
+  .nums small { color: var(--muted); font-size: 12px; font-weight: 700; }
+  .nums b { font: 800 22px/1.1 var(--f-disp); font-variant-numeric: tabular-nums; }
+  .barra-fx { display: flex; height: 22px; border-radius: 999px; overflow: hidden; background: var(--bg); gap: 2px; }
+  .barra-fx span { display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 800; min-width: 22px; }
+  .fx-critical { background: var(--critical); } .fx-warning { background: var(--warning); } .fx-good { background: var(--good); }
+  .fx-txt-critical { color: var(--critical); } .fx-txt-warning { color: var(--warning); } .fx-txt-good { color: var(--good); }
+  .fx { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  .fx.fx-critical { background: color-mix(in srgb, var(--critical) 15%, transparent); color: var(--critical); }
+  .fx.fx-warning { background: color-mix(in srgb, var(--warning) 18%, transparent); color: color-mix(in srgb, var(--warning) 75%, var(--ink)); }
+  .fx.fx-good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pct-al { font: 800 16px var(--f-disp); min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+  .li-toque { cursor: pointer; border-radius: 12px; } .li-toque:hover { background: var(--bg); }
+  details.card summary { cursor: pointer; font: 800 18px var(--f-disp); }
+  details.card[open] summary { margin-bottom: 8px; }
+  .modelos { display: grid; gap: 8px; }
+  .modelo { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--bg); cursor: pointer; }
+  .modelo:hover, .modelo:focus-visible { border-color: var(--brand-txt); }
+  .modelo small { color: var(--muted); }
+  .sub { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; display: block; }
+  .tab-q { display: grid; gap: 6px; }
+  .tab-q-comp { font: 800 16px var(--f-disp); margin-top: 8px; color: var(--brand-txt); }
+  .tab-q-li { display: grid; grid-template-columns: 40px auto minmax(90px, 1fr); align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .tab-q-n { font: 800 14px var(--f-disp); color: var(--muted); }
+  .tab-q-cod { padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); min-width: 0; width: 100%; }
+  .tab-q-desc { grid-column: 2 / -1; color: var(--muted); font-size: 12px; }
+  .letras { display: flex; gap: 4px; flex-wrap: wrap; }
+  .letra { width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); font-weight: 800; cursor: pointer; }
+  .letra.on { color: #fff; border-color: transparent; background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--a3))); }
+  .modal .tab-q-li { grid-template-columns: 36px 1fr; }
+  .modal { max-width: 560px; }
+  .barra-salvar { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 10px; border-radius: 18px; background: var(--vidro); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--line); }
+  .area-res { display: grid; gap: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 2px; }
+  .tile small { color: var(--muted); font-weight: 700; font-size: 13px; }
+  .tile b { font: 800 30px/1.1 var(--f-disp); font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .card h3 { font-size: 18px; margin-bottom: 6px; }
+  .desc-li { border-left: 4px solid var(--line); padding: 8px 0 8px 12px; margin-top: 10px; display: grid; gap: 4px; }
+  .desc-li p { margin: 0; font-size: 14px; }
+  .desc-li small { color: var(--muted); }
+  .desc-topo { display: flex; justify-content: space-between; align-items: baseline; }
+  .desc-pct { font: 800 18px var(--f-disp); }
+  .fx-borda-critical { border-left-color: var(--critical) !important; } .fx-borda-warning { border-left-color: var(--warning) !important; } .fx-borda-good { border-left-color: var(--good) !important; }
+  .mini-barra { height: 6px; border-radius: 6px; background: var(--bg); overflow: hidden; } .mini-barra span { display: block; height: 100%; border-radius: 6px; }
+  .busca { width: 100%; padding: 12px 14px; border-radius: 13px; border: 1.5px solid var(--line); background: var(--card); }
+  .grade-q { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .q-cel { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 8px 10px; display: grid; gap: 2px; }
+  .q-cel span { font: 800 20px var(--f-disp); } .q-cel small { color: var(--muted); font-size: 12px; }
+  .grupo { border-left: 4px solid var(--line); padding: 8px 0 8px 12px; margin-top: 12px; display: grid; gap: 4px; }
+  .grupo p { margin: 0; } .grupo ul { margin: 0; padding-left: 18px; }
+
+  /* =====================  fase 3: apoio presencial  ===================== */
+  .horas { display: grid; gap: 6px; }
+  .hora-li { display: grid; grid-template-columns: 36px 1fr auto 1fr; align-items: center; gap: 8px; }
+  .hora-li input, .gd-campos select, .gd-campos input, .nav-dia input { padding: 9px 10px; border-radius: 11px; border: 1.5px solid var(--line); background: var(--bg); min-width: 0; width: 100%; }
+  .hora-li span { color: var(--muted); font-size: 13px; }
+  .chips-dias { position: static; justify-content: space-between; }
+  .chips-dias button { flex: 1 1 0; }
+  .grade-dia { display: grid; gap: 8px; }
+  .gd-li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .gd-cab { display: flex; gap: 8px; align-items: baseline; } .gd-cab small { color: var(--muted); }
+  .gd-campos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+  .gd-campos input { grid-column: 1 / -1; }
+  .nav-dia { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+  .nav-dia-meio { display: grid; text-align: center; } .nav-dia-meio b { font: 800 20px var(--f-disp); } .nav-dia-meio small { color: var(--muted); }
+  .nav-dia input { grid-column: 1 / -1; }
+  .ag-turma { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .ag-selo { width: auto; min-width: 46px; padding: 0 8px; font-size: 13px; }
+  .ag-aulas { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .ag-aula { flex: none; min-width: 92px; max-width: 130px; display: grid; gap: 1px; text-align: left; padding: 7px 9px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); cursor: pointer; }
+  .ag-aula b { font: 800 14px var(--f-disp); } .ag-aula small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-aula:hover:not(:disabled) { border-color: var(--brand-txt); }
+  .ag-aula.vaga { opacity: .45; cursor: default; }
+  .ag-aula.tem-apoio { border-color: transparent; color: #fff; background: linear-gradient(135deg, var(--a3), color-mix(in srgb, var(--a3) 55%, var(--brand))); }
+  .ag-aula.tem-apoio small { color: rgba(255,255,255,.9); }
+  .apoio-it { display: grid; gap: 3px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .apoio-it span, .apoio-it small { color: var(--muted); }
+  .apoio-it.hoje b { color: var(--brand-txt); }
+  .devolutiva { margin-top: 6px; padding: 10px 12px; border-radius: 14px; background: var(--bg); display: grid; gap: 2px; }
+  .devolutiva p { margin: 0 0 6px; overflow-wrap: anywhere; }
+
+  /* =====================  fase 4: fluência leitora  ===================== */
+  .tc-flu { grid-template-columns: auto minmax(0, 1fr); }
+  .tc-barra { grid-column: 1 / -1; height: 14px; } .tc-barra span { font-size: 10px; min-width: 14px; }
+  .flu-barra { position: sticky; top: var(--topo); z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-radius: 18px; background: var(--vidro); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--line); }
+  .flu-relogio { font: 800 30px var(--f-disp); font-variant-numeric: tabular-nums; min-width: 78px; }
+  .flu-relogio.fim { color: var(--critical); }
+  .flu-leg.destaque { color: var(--brand-txt); font-weight: 800; }
+  .flu-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+  .flu-it { display: inline-grid; place-items: center; padding: 10px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); font: 700 16px var(--f-body); letter-spacing: .02em; cursor: pointer; user-select: none; text-align: center; }
+  .flu-it.l7 { font-size: 14px; } .flu-it.l9 { font-size: 12.5px; }
+  .flu-texto p { line-height: 2.3; margin: 0 0 6px; }
+  .flu-texto .flu-it { display: inline; padding: 4px 2px; border: 0; background: none; border-radius: 6px; font-size: 17px; }
+  .flu-titulo { font: 800 18px var(--f-disp); text-align: center; margin-bottom: 8px; }
+  .flu-it.ok { background: color-mix(in srgb, var(--good) 22%, var(--card)); border-color: var(--good); }
+  .flu-it.er { background: var(--critical); color: #fff; border-color: var(--critical); }
+  .flu-it.depois { opacity: .35; }
+  .flu-it.ult { outline: 3px solid var(--brand-txt); outline-offset: 1px; }
+  .flu-final { display: grid; gap: 10px; }
+  .flu-perfil { justify-self: start; padding: 10px 18px; border-radius: 16px; color: #fff; font: 800 24px var(--f-disp); }
+  .flu-hist { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); } .flu-hist small { color: var(--muted); }
+  .cad-pag { background: #fff; color: #111; border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 14px; }
+  .cad-cab { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: .08em; }
+  .cad-capa { font: 800 30px var(--f-disp); text-align: center; margin-top: 40px; } .cad-cod { font: 800 44px var(--f-disp); text-align: center; color: #1E2A78; }
+  .cad-grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; font: 700 20px var(--f-body); }
+  .cad-tit { font: 800 22px var(--f-disp); text-align: center; } .cad-tx { font-size: 20px; line-height: 1.7; margin: 0; }
+  @media print {
+    header.top, .nao-imprime, .tema-flutua, .aviso { display: none !important; }
+    body { background: #fff !important; } .wrap { padding: 0; max-width: none; }
+    .cad-pag { border: 0; border-radius: 0; break-after: page; page-break-after: always; min-height: 95vh; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="modelos.js"></script>
+<script src="calc.js"></script>
+<script src="flu-cadernos.js"></script>
+<script src="config.js"></script>
+<script src="dados.js"></script>
+</head>
+<body data-tela="tela-carregando">
+<header class="top">
+  <button type="button" class="btn-topo" id="voltar" aria-label="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span class="rot-voltar">Voltar</span></button>
+  <img class="escola-mini hidden" id="escola-mini" alt="">
+  <h1 id="titulo">Lume</h1>
+  <button type="button" class="btn-topo" id="btn-tema" aria-label="Cores e modo escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"/></svg></button>
+  <button type="button" class="btn-topo" id="btn-sair">Sair</button>
+</header>
+<button type="button" class="tema-flutua" id="btn-tema2" aria-label="Cores e modo escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"/></svg></button>
+
+<main class="wrap" id="app">
+  <section id="tela-carregando"><div class="vazio">Abrindo o Lume…</div></section>
+
+  <!-- Entrar / criar conta -->
+  <section id="tela-entrar" class="hidden">
+    <div class="entrada">
+      <div class="lg-logo" id="lg-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><defs><linearGradient id="lg-feixe-g" gradientUnits="userSpaceOnUse" x1="16.2" y1="0" x2="30" y2="0"><stop offset="0" stop-color="#FFE9B8" stop-opacity="1"/><stop offset=".6" stop-color="#F5A623" stop-opacity=".7"/><stop offset="1" stop-color="#F5A623" stop-opacity="0"/></linearGradient></defs><path d="M8 5.5v12h8" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><g class="l-palavra"><text class="l-letra" x="8.0" y="6.3" transform="rotate(90 8.0 6.3)" style="animation-delay:1.43s">E</text><text class="l-letra" x="8.0" y="8.5" transform="rotate(90 8.0 8.5)" style="animation-delay:1.70s">D</text><text class="l-letra" x="8.0" y="10.7" transform="rotate(90 8.0 10.7)" style="animation-delay:1.96s">U</text><text class="l-letra" x="8.0" y="12.9" transform="rotate(90 8.0 12.9)" style="animation-delay:2.19s">C</text><text class="l-letra" x="8.0" y="15.1" transform="rotate(90 8.0 15.1)" style="animation-delay:2.37s">A</text><text class="l-letra" x="10.3" y="17.5" style="animation-delay:2.69s">T</text><text class="l-letra" x="12.2" y="17.5" style="animation-delay:2.85s">I</text><text class="l-letra" x="14.0" y="17.5" style="animation-delay:3.03s">O</text><text class="l-letra" x="15.8" y="17.5" style="animation-delay:3.22s">N</text></g><polygon class="l-feixe" points="16.2,8.4 30,5.2 30,11.6" fill="url(#lg-feixe-g)"/><circle class="l-ponto" cx="16.2" cy="8.4" r="2.5" fill="#F5A623"/></svg></div>
+      <div class="lg-nome">Lume</div>
+      <p class="lg-frase">Acompanhamento pedagógico da escola: monitoramento das turmas, apoio presencial e fluência leitora.</p>
+      <div class="card">
+        <div class="abas" role="tablist">
+          <button type="button" role="tab" id="aba-entrar" aria-selected="true">Entrar</button>
+          <button type="button" role="tab" id="aba-criar" aria-selected="false">Criar conta</button>
+        </div>
+        <form class="form" id="f-entrar" novalidate>
+          <div class="campo"><label for="e-email">E-mail</label><input id="e-email" type="email" autocomplete="username" required></div>
+          <div class="campo"><label for="e-senha">Senha</label><input id="e-senha" type="password" autocomplete="current-password" required></div>
+          <p class="erro hidden" id="e-erro"></p>
+          <button class="btn btn-pri" type="submit" id="e-ok">Entrar</button>
+          <button class="btn-link" type="button" id="e-esqueci">Esqueci a senha</button>
+        </form>
+        <form class="form hidden" id="f-criar" novalidate>
+          <p class="ajuda">Use o mesmo e-mail que a gestão da escola cadastrou no seu convite.</p>
+          <div class="campo"><label for="c-nome">Seu nome</label><input id="c-nome" autocomplete="name" required></div>
+          <div class="campo"><label for="c-email">E-mail</label><input id="c-email" type="email" autocomplete="username" required></div>
+          <div class="campo"><label for="c-senha">Crie uma senha (mínimo 6 caracteres)</label><input id="c-senha" type="password" autocomplete="new-password" required></div>
+          <p class="erro hidden" id="c-erro"></p>
+          <button class="btn btn-pri" type="submit" id="c-ok">Criar conta</button>
+        </form>
+      </div>
+      <div class="demo hidden" id="aviso-demo"></div>
+    </div>
+  </section>
+
+  <!-- Conta sem escola -->
+  <section id="tela-sem-escola" class="hidden">
+    <div class="card">
+      <h2>Falta o convite da escola</h2>
+      <p class="ajuda" id="sem-escola-tx"></p>
+      <div class="acoes" style="margin-top:12px"><button class="btn btn-pri" type="button" id="sem-escola-tentar">Já recebi, tentar de novo</button><button class="btn" type="button" id="sem-escola-sair">Sair</button></div>
+    </div>
+  </section>
+
+  <!-- Nova senha (link do e-mail) -->
+  <section id="tela-nova-senha" class="hidden">
+    <form class="card form" id="f-nova" novalidate>
+      <h2>Criar nova senha</h2>
+      <div class="campo"><label for="n-senha">Nova senha (mínimo 6 caracteres)</label><input id="n-senha" type="password" autocomplete="new-password"></div>
+      <p class="erro hidden" id="n-erro"></p>
+      <button class="btn btn-pri" type="submit">Salvar senha</button>
+    </form>
+  </section>
+
+  <section id="tela-inicio" class="hidden"></section>
+  <section id="tela-turmas" class="hidden"></section>
+  <section id="tela-turma" class="hidden"></section>
+  <section id="tela-admin" class="hidden"></section>
+  <section id="tela-escolas" class="hidden"></section>
+  <section id="tela-breve" class="hidden"></section>
+  <section id="tela-avaliacoes" class="hidden"></section>
+  <section id="tela-editor" class="hidden"></section>
+  <section id="tela-lancar" class="hidden"></section>
+  <section id="tela-resultado" class="hidden"></section>
+  <section id="tela-apoio" class="hidden"></section>
+  <section id="tela-flu" class="hidden"></section>
+  <section id="tela-flu-apl" class="hidden"></section>
+</main>
+
+<div class="painel-tema hidden" id="painel-tema" role="dialog" aria-label="Cores e modo escuro">
+  <div class="rot">Modo</div>
+  <div class="modos"><button type="button" data-modo="auto">Automático</button><button type="button" data-modo="claro">Claro</button><button type="button" data-modo="escuro">Escuro</button></div>
+  <div class="rot">Cores</div>
+  <div class="paletas" id="paletas"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var D = window.D;
+  var estado = { perfil: null, turmas: [], contagem: {}, turma: null, abaAdmin: 'escola' };
+
+  /* ---------- utilitários ---------- */
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  // Etapas: EF = Ensino Fundamental (1º ao 9º ano), EM = Ensino Médio (1ª a 4ª série)
+  function ehMedio(t) { return t.etapa === 'EM'; }
+  function seloSerie(t) { return t.ano + (ehMedio(t) ? 'ª' : 'º'); }
+  function rotSerie(t) { return ehMedio(t) ? t.ano + 'ª série' : t.ano + 'º ano'; }
+  function chaveSerie(t) { return (ehMedio(t) ? 'm' : '') + t.ano; }
+  function nomeEtapa(t) { return ehMedio(t) ? 'Ensino Médio' : t.ano <= 5 ? 'Fundamental I' : 'Fundamental II'; }
+  function nomeTurma(t) { return seloSerie(t) + ' ' + t.letra; }
+  var avisoT;
+  function aviso(txt, tipo) {
+    var a = $('aviso-box'); if (!a) { a = el('div', 'aviso'); a.id = 'aviso-box'; a.setAttribute('role', 'status'); document.body.appendChild(a); }
+    a.className = 'aviso' + (tipo === 'err' ? ' err' : ''); a.textContent = txt; a.classList.remove('hidden');
+    clearTimeout(avisoT); avisoT = setTimeout(function () { a.classList.add('hidden'); }, 4200);
+  }
+  function modal(titulo, corpo, botoes) {
+    fecharModal();
+    var f = el('div', 'modal-fundo'); f.id = 'modal-fundo';
+    var m = el('div', 'modal'); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+    m.appendChild(el('h2', null, titulo));
+    if (typeof corpo === 'string') m.appendChild(el('p', 'ajuda', corpo)); else if (corpo) m.appendChild(corpo);
+    var ac = el('div', 'acoes');
+    (botoes || [['Fechar', '', fecharModal]]).forEach(function (b) { var x = el('button', 'btn ' + (b[1] || ''), b[0]); x.type = 'button'; x.onclick = b[2]; ac.appendChild(x); });
+    m.appendChild(ac); f.appendChild(m);
+    f.onclick = function (e) { if (e.target === f) fecharModal(); };
+    document.body.appendChild(f);
+    var foco = m.querySelector('input, select, textarea, .btn-pri'); if (foco) setTimeout(function () { foco.focus(); }, 30);
+    return m;
+  }
+  function fecharModal() { var f = $('modal-fundo'); if (f) f.remove(); }
+  function confirmar(titulo, texto, rotulo, fn) { modal(titulo, texto, [['Cancelar', '', fecharModal], [rotulo, 'btn-perigo', function () { fecharModal(); fn(); }]]); }
+  function campo(rot, input) { var c = el('div', 'campo'); var l = el('label', null, rot); if (!input.id) input.id = 'cp-' + Math.random().toString(36).slice(2, 8); l.htmlFor = input.id; c.appendChild(l); c.appendChild(input); return c; }
+  function input(tipo, valor) { var i = el('input'); i.type = tipo || 'text'; if (valor != null) i.value = valor; return i; }
+  function falhou(e) { aviso(e && e.message ? e.message : 'Algo deu errado.', 'err'); }
+  function carregando(box, txt) { box.textContent = ''; box.appendChild(el('div', 'vazio', txt || 'Carregando…')); }
+  var ehGestor = function () { return estado.perfil && (estado.perfil.papel === 'gestor' || estado.perfil.super); };
+
+  /* ---------- navegação ---------- */
+  var TELAS = ['tela-carregando', 'tela-entrar', 'tela-sem-escola', 'tela-nova-senha', 'tela-inicio', 'tela-turmas', 'tela-turma', 'tela-admin', 'tela-escolas', 'tela-breve', 'tela-avaliacoes', 'tela-editor', 'tela-lancar', 'tela-resultado', 'tela-apoio', 'tela-flu', 'tela-flu-apl'];
+  function mostrar(id, titulo) {
+    TELAS.forEach(function (t) { $(t).classList.toggle('hidden', t !== id); });
+    document.body.setAttribute('data-tela', id);
+    if (titulo) $('titulo').textContent = titulo;
+    $('voltar').classList.toggle('hidden', id === 'tela-inicio' || id === 'tela-sem-escola');
+    $('btn-sair').classList.toggle('hidden', id !== 'tela-inicio' && id !== 'tela-sem-escola');
+    window.scrollTo(0, 0);
+    requestAnimationFrame(function () { document.documentElement.style.setProperty('--topo', document.querySelector('header.top').offsetHeight + 'px'); });
+  }
+  $('voltar').onclick = function () {
+    var t = document.body.getAttribute('data-tela');
+    if (t === 'tela-flu-apl') { var A = estado.fluApl; if (estado.fluEm) confirmar('Sair sem salvar?', 'A leitura deste aluno ainda não foi salva.', 'Sair', function () { estado.fluEm = false; fluTurma(A.t); }); else fluTurma(A.t); return; }
+    if (t === 'tela-flu') { (estado.voltarFlu || mostrarInicio)(); return; }
+    if (t === 'tela-turma' || t === 'tela-avaliacoes') mostrarTurmas();
+    else if (t === 'tela-lancar' || t === 'tela-resultado') abrirTurma(estado.turma);
+    else if (t === 'tela-editor') { if (estado.voltarEditor) abrirTurma(estado.voltarEditor); else abrirListaAvaliacoes(); }
+    else mostrarInicio();
+  };
+  $('btn-sair').onclick = function () {
+    modal('Sair do Lume?', 'Você vai precisar do e-mail e da senha para entrar de novo.', [['Continuar no app', '', fecharModal], ['Sair', 'btn-perigo', function () { fecharModal(); D.sair().then(function () { estado.perfil = null; telaEntrar(); }); }]]);
+  };
+
+  /* ---------- tema ---------- */
+  var PALETAS = [['lume', 'Lume', '#1E2A78', '#F5A623'], ['oceano', 'Oceano', '#0b6fa8', '#18c6b0'], ['floresta', 'Floresta', '#1d7a45', '#b8cf2a'], ['aurora', 'Aurora', '#b0186f', '#ff8a3d'], ['lavanda', 'Lavanda', '#5b3fd0', '#ff6fae']];
+  (function () {
+    var raiz = document.documentElement, painel = $('painel-tema'), pal = $('paletas');
+    PALETAS.forEach(function (p) {
+      var b = el('button', 'sw-tema'); b.type = 'button'; b.setAttribute('data-paleta', p[0]);
+      var i = el('i'); i.style.background = 'linear-gradient(135deg,' + p[2] + ' 50%,' + p[3] + ' 50%)'; b.appendChild(i); b.appendChild(document.createTextNode(p[1]));
+      b.onclick = function () { aplicarPaleta(p[0]); }; pal.appendChild(b);
+    });
+    function aplicarModo(m) {
+      if (m === 'claro' || m === 'escuro') raiz.setAttribute('data-modo', m); else { raiz.removeAttribute('data-modo'); m = 'auto'; }
+      try { localStorage.setItem('lume-modo', m); } catch (e) {}
+      painel.querySelectorAll('[data-modo]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-modo') === m); });
+    }
+    function aplicarPaleta(p) {
+      if (p !== 'lume') raiz.setAttribute('data-paleta', p); else raiz.removeAttribute('data-paleta');
+      try { localStorage.setItem('lume-paleta', p); } catch (e) {}
+      pal.querySelectorAll('.sw-tema').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-paleta') === p); });
+    }
+    painel.querySelectorAll('[data-modo]').forEach(function (b) { b.onclick = function () { aplicarModo(b.getAttribute('data-modo')); }; });
+    aplicarModo(raiz.getAttribute('data-modo') || 'auto'); aplicarPaleta(raiz.getAttribute('data-paleta') || 'lume');
+    function abrir(e) { e.stopPropagation(); painel.classList.toggle('hidden'); }
+    $('btn-tema').onclick = abrir; $('btn-tema2').onclick = abrir;
+    document.addEventListener('click', function (e) { if (!painel.contains(e.target)) painel.classList.add('hidden'); });
+    $('lg-logo').onclick = function () { var l = $('lg-logo'); l.innerHTML = l.innerHTML; };
+  })();
+
+  /* ---------- entrar / criar conta / senha ---------- */
+  function telaEntrar() {
+    if (D.modo === 'demo') {
+      var a = $('aviso-demo'); a.classList.remove('hidden'); a.textContent = '';
+      a.appendChild(el('b', null, 'Modo demonstração'));
+      a.appendChild(el('p', 'ajuda', 'Sem banco de dados: tudo fica só neste navegador. Senha de todos: demo123'));
+      var ul = el('ul'); ul.style.margin = '6px 0 0'; ul.style.paddingLeft = '18px';
+      [['gestor@demo.lume', 'gestão da escola'], ['prof@demo.lume', 'professora do 5º A'], ['super@demo.lume', 'administra todas as escolas']].forEach(function (u) {
+        var li = el('li'); var b = el('button', 'btn-link', u[0]); b.type = 'button'; b.onclick = function () { $('e-email').value = u[0]; $('e-senha').value = 'demo123'; abaEntrar(true); };
+        li.appendChild(b); li.appendChild(document.createTextNode(' · ' + u[1])); ul.appendChild(li);
+      });
+      a.appendChild(ul);
+      var r = el('button', 'btn btn-peq', 'Apagar dados de demonstração'); r.type = 'button'; r.style.marginTop = '8px';
+      r.onclick = function () { D.reiniciarDemo(); aviso('Dados de demonstração restaurados.'); };
+      a.appendChild(r);
+    }
+    mostrar('tela-entrar', 'Lume');
+  }
+  function abaEntrar(sim) {
+    $('aba-entrar').setAttribute('aria-selected', sim); $('aba-criar').setAttribute('aria-selected', !sim);
+    $('f-entrar').classList.toggle('hidden', !sim); $('f-criar').classList.toggle('hidden', sim);
+  }
+  $('aba-entrar').onclick = function () { abaEntrar(true); };
+  $('aba-criar').onclick = function () { abaEntrar(false); };
+  function erroEm(id, msg) { var e = $(id); e.textContent = msg || ''; e.classList.toggle('hidden', !msg); }
+  $('f-entrar').onsubmit = function (ev) {
+    ev.preventDefault();
+    var email = $('e-email').value.trim(), senha = $('e-senha').value;
+    if (!email || !senha) { erroEm('e-erro', 'Digite o e-mail e a senha.'); return; }
+    erroEm('e-erro', ''); $('e-ok').disabled = true;
+    D.entrar(email, senha).then(function () { $('e-senha').value = ''; return iniciarSessao(); })
+      .catch(function (e) { erroEm('e-erro', e.message); }).then(function () { $('e-ok').disabled = false; });
+  };
+  $('f-criar').onsubmit = function (ev) {
+    ev.preventDefault();
+    var nome = $('c-nome').value.trim(), email = $('c-email').value.trim(), senha = $('c-senha').value;
+    if (!nome || !email || !senha) { erroEm('c-erro', 'Preencha nome, e-mail e senha.'); return; }
+    erroEm('c-erro', ''); $('c-ok').disabled = true;
+    D.cadastrar(email, senha, nome).then(function (r) {
+      $('c-senha').value = '';
+      if (r && r.precisaConfirmar) {
+        modal('Confira seu e-mail', 'Enviamos uma mensagem para ' + email + '. Toque no link dela para confirmar a conta e depois entre com o e-mail e a senha.');
+        abaEntrar(true); $('e-email').value = email; return;
+      }
+      return iniciarSessao();
+    }).catch(function (e) { erroEm('c-erro', e.message); }).then(function () { $('c-ok').disabled = false; });
+  };
+  $('e-esqueci').onclick = function () {
+    var i = input('email', $('e-email').value.trim()); i.autocomplete = 'username';
+    var corpo = el('div', 'form'); corpo.appendChild(el('p', 'ajuda', 'Vamos mandar um link para você criar uma senha nova.')); corpo.appendChild(campo('E-mail', i));
+    modal('Esqueci a senha', corpo, [['Cancelar', '', fecharModal], ['Enviar link', 'btn-pri', function () {
+      if (!i.value.trim()) { aviso('Digite o e-mail.', 'err'); return; }
+      D.esqueci(i.value.trim()).then(function () { fecharModal(); aviso('Se o e-mail tiver conta, o link chega em alguns minutos.'); }).catch(falhou);
+    }]]);
+  };
+  $('f-nova').onsubmit = function (ev) {
+    ev.preventDefault();
+    var s = $('n-senha').value; if (s.length < 6) { erroEm('n-erro', 'A senha precisa ter pelo menos 6 caracteres.'); return; }
+    D.novaSenha(s).then(function () { history.replaceState(null, '', location.pathname); aviso('Senha nova salva.'); iniciarSessao(); }).catch(function (e) { erroEm('n-erro', e.message); });
+  };
+  $('sem-escola-tentar').onclick = function () { iniciarSessao(); };
+  $('sem-escola-sair').onclick = function () { D.sair().then(telaEntrar); };
+
+  function iniciarSessao() {
+    return D.carregarPerfil().then(function (p) {
+      if (!p) { telaEntrar(); return; }
+      if (p.semEscola) {
+        $('sem-escola-tx').textContent = 'Sua conta (' + p.email + ') ainda não está ligada a nenhuma escola. Peça à gestão da sua escola para cadastrar um convite com este mesmo e-mail e toque no botão abaixo.';
+        mostrar('tela-sem-escola', 'Lume'); return;
+      }
+      if (p.ativo === false) { modal('Acesso bloqueado', 'Seu acesso foi desativado pela gestão da escola.'); D.sair().then(telaEntrar); return; }
+      estado.perfil = p;
+      if (p.escola && p.escola.logo) { $('escola-mini').src = p.escola.logo; $('escola-mini').classList.remove('hidden'); } else $('escola-mini').classList.add('hidden');
+      mostrarInicio();
+    }).catch(function (e) { falhou(e); telaEntrar(); });
+  }
+
+  /* ---------- início ---------- */
+  function atalho(cls, icone, titulo, texto, selo, fn) {
+    var a = el('button', 'atalho ' + cls); a.type = 'button';
+    a.appendChild(el('span', 'ic', icone));
+    var tx = el('div'); tx.appendChild(el('h3', null, titulo)); tx.appendChild(el('p', null, texto)); if (selo) tx.appendChild(el('span', 'selo', selo));
+    a.appendChild(tx); a.onclick = fn; return a;
+  }
+  function mostrarInicio() {
+    var p = estado.perfil, box = $('tela-inicio'); box.textContent = '';
+    var ola = el('div', 'ola');
+    var hora = new Date().getHours();
+    ola.appendChild(el('h2', null, (hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite') + (p.nome ? ', ' + (p.nome.replace(/^(prof(\.|ª|a|essora|essor)?|sr\.?|sra\.?)\s+/i, '').split(' ')[0] || p.nome) : '') + '!'));
+    ola.appendChild(el('div', 'papel', p.escola ? p.escola.nome + ' · ' + (p.papel === 'gestor' ? 'Gestão' : 'Professor(a)') : 'Administração de todas as escolas'));
+    box.appendChild(ola);
+    var g = el('div', 'atalhos');
+    if (p.escola) {
+      g.appendChild(atalho('c-mon', '📊', 'Monitoramento', p.papel === 'gestor' ? 'Avaliações das turmas: acerto por aluno, descritores em defasagem e encaminhamentos.' : 'Lance as respostas das suas turmas e veja quem está em defasagem e em quais descritores.', null, mostrarTurmas));
+      var cApoio = p.papel === 'gestor'
+        ? atalho('c-apoio', '🗓️', 'Apoio presencial', 'Veja a grade do dia e agende a observação de aula com um toque. Um apoio por semana para cada professor.', null, function () { abrirApoio(); })
+        : atalho('c-apoio', '🗓️', 'Apoio presencial', 'Veja quando você vai receber apoio presencial e a devolutiva de cada observação.', null, abrirMeusApoios);
+      g.appendChild(cApoio);
+      (function (card) {
+        var hoje = isoLocal(new Date()), fim = somaDias(segundaDe(hoje), 6);
+        var pr = p.papel === 'gestor' ? D.apoios.listar(p.escola.id, hoje, hoje) : D.apoios.meus(p.id);
+        pr.then(function (l) {
+          var n = p.papel === 'gestor' ? l.length : l.filter(function (a) { return a.data >= hoje && a.data <= fim; }).length;
+          if (!n) return;
+          card.querySelector('div').appendChild(el('span', 'selo', p.papel === 'gestor' ? n + (n === 1 ? ' apoio hoje' : ' apoios hoje') : n + (n === 1 ? ' apoio nesta semana' : ' apoios nesta semana')));
+        }).catch(function () {});
+      })(cApoio);
+      g.appendChild(atalho('c-flu', '🎙️', 'Fluência leitora', 'Aplique o simulado de leitura com o caderno impresso: o app cronometra, você marca os erros e ele classifica o leitor.', null, abrirFlu));
+      if (p.papel === 'gestor') g.appendChild(atalho('c-adm', '⚙️', 'Administração', 'Dados da escola, turmas, alunos e quem pode entrar no app.', null, function () { abrirAdmin('escola'); }));
+    }
+    if (p.super) g.appendChild(atalho('c-sup', '🏫', 'Escolas', 'Cadastre escolas e convide a gestão de cada uma.', null, abrirEscolas));
+    box.appendChild(g);
+    mostrar('tela-inicio', p.escola ? p.escola.nome : 'Lume');
+  }
+  function breve(titulo, texto) {
+    var box = $('tela-breve'); box.textContent = '';
+    var c = el('div', 'card'); c.appendChild(el('h2', null, 'Em construção')); c.appendChild(el('p', 'ajuda', texto)); box.appendChild(c);
+    mostrar('tela-breve', titulo);
+  }
+
+  /* ---------- monitoramento: turmas ---------- */
+  function carregarTurmas() {
+    var e = estado.perfil.escola;
+    return Promise.all([D.turmas.listar(e.id, e.ano_letivo), D.alunos.contar(e.id)]).then(function (r) { estado.turmas = r[0]; estado.contagem = r[1]; return r[0]; });
+  }
+  function mostrarTurmas() {
+    var box = $('tela-turmas'); carregando(box, 'Carregando as turmas…'); mostrar('tela-turmas', 'Monitoramento');
+    carregarTurmas().then(function (turmas) {
+      var p = estado.perfil;
+      var minhas = p.papel === 'gestor' ? turmas : turmas.filter(function (t) { return p.turmas.indexOf(t.id) !== -1; });
+      box.textContent = '';
+      if (!minhas.length) {
+        var c = el('div', 'card');
+        c.appendChild(el('h2', null, 'Nenhuma turma por aqui'));
+        c.appendChild(el('p', 'ajuda', p.papel === 'gestor' ? 'Cadastre as turmas da escola em Administração › Turmas.' : 'A gestão da escola ainda não ligou nenhuma turma ao seu acesso.'));
+        if (p.papel === 'gestor') { var b = el('button', 'btn btn-pri', 'Cadastrar turmas'); b.type = 'button'; b.style.marginTop = '12px'; b.onclick = function () { abrirAdmin('turmas'); }; c.appendChild(b); }
+        box.appendChild(c); return;
+      }
+      if (p.papel === 'gestor') {
+        var bar = el('div', 'acoes'); var ba = el('button', 'btn', '📝 Avaliações da escola'); ba.type = 'button'; ba.onclick = abrirListaAvaliacoes; bar.appendChild(ba); box.appendChild(bar);
+      }
+      var lista = el('div', 'turmas-lista'), porAno = {}, anos = [];
+      minhas.forEach(function (t) { var k = chaveSerie(t); if (!porAno[k]) { porAno[k] = []; anos.push(k); } porAno[k].push(t); });
+      anos.forEach(function (ano) {
+        var t0 = porAno[ano][0];
+        var sec = el('section', 'bloco-ano'); sec.setAttribute('data-ano', ano);
+        var tit = el('div', 'bloco-ano-tit'); tit.appendChild(el('span', 'bloco-ano-selo', seloSerie(t0)));
+        var h = el('div'); h.appendChild(el('h3', null, rotSerie(t0))); h.appendChild(el('small', null, nomeEtapa(t0) + ' · ' + porAno[ano].length + (porAno[ano].length === 1 ? ' turma' : ' turmas')));
+        tit.appendChild(h); tit.appendChild(el('span', 'bloco-ano-linha')); sec.appendChild(tit);
+        var g = el('div', 'bloco-ano-grade');
+        porAno[ano].forEach(function (t) {
+          var b = el('button', 'tc'); b.type = 'button'; b.setAttribute('aria-label', 'Abrir a turma ' + nomeTurma(t));
+          b.appendChild(el('span', 'tc-letra' + (t.letra.length > 2 ? ' longa' : ''), t.letra.length > 3 ? t.letra.slice(0, 3) : t.letra));
+          var tx = el('span', 'tc-tx'); tx.appendChild(el('span', 'tc-ano', rotSerie(t) + ' · ' + t.turno));
+          tx.appendChild(el('b', null, 'Turma ' + t.letra)); tx.appendChild(el('small', null, (estado.contagem[t.id] || 0) + ' alunos'));
+          b.appendChild(tx); b.onclick = function () { abrirTurma(t); }; g.appendChild(b);
+        });
+        sec.appendChild(g); lista.appendChild(sec);
+      });
+      box.appendChild(lista);
+    }).catch(function (e) { box.textContent = ''; box.appendChild(el('div', 'vazio', 'Não foi possível carregar: ' + e.message)); });
+  }
+  function abrirTurma(t) {
+    estado.turma = t;
+    var box = $('tela-turma'); carregando(box, 'Carregando os alunos…'); mostrar('tela-turma', 'Turma ' + nomeTurma(t));
+    D.alunos.listar(t.id).then(function (al) {
+      box.textContent = '';
+      var c = el('div', 'card'); c.setAttribute('data-ano', chaveSerie(t));
+      c.appendChild(el('h2', null, 'Turma ' + nomeTurma(t)));
+      c.appendChild(el('p', 'ajuda', nomeEtapa(t) + ' · ' + t.turno + ' · ' + al.filter(function (a) { return a.ativo; }).length + ' alunos ativos'));
+      box.appendChild(c);
+      cardsAvaliacoesTurma(box, t, al);
+      cardFluTurma(box, t, al);
+      var c2 = el('details', 'card'); c2.appendChild(el('summary', null, 'Alunos da turma (' + al.filter(function (a) { return a.ativo; }).length + ')'));
+      var ul = el('ul', 'lista');
+      al.forEach(function (a) { var li = el('li'); li.appendChild(el('span', 'n', a.numero)); li.appendChild(el('span', 'nome' + (a.ativo ? '' : ' inativo'), a.nome)); ul.appendChild(li); });
+      if (!al.length) ul.appendChild(el('li', 'vazio', 'Nenhum aluno cadastrado.'));
+      c2.appendChild(ul); box.appendChild(c2);
+    }).catch(falhou);
+  }
+
+  /* =====================  Monitoramento: avaliações (fase 2)  ===================== */
+  var M = window.LUME_MODELOS, C = window.LUME_CALC;
+  function pct(v) { return v == null ? '—' : Math.round(v * 100) + '%'; }
+  function serieDe(x) { return { etapa: x.etapa || 'EF', ano: x.ano }; }
+  function mesmaSerie(a, t) { return (a.etapa || 'EF') === (t.etapa || 'EF') && a.ano === t.ano; }
+  function nomesFaixa(av) { return (av.faixas && av.faixas.nomes) || ['Abaixo do básico', 'Básico', 'Adequado']; }
+  var CLS_FAIXA = ['critical', 'warning', 'good'], ICO_FAIXA = ['▼', '●', '▲'];
+  function etqFaixa(av, f) { var s = el('span', 'fx fx-' + CLS_FAIXA[f], ICO_FAIXA[f] + ' ' + nomesFaixa(av)[f]); return s; }
+  function dataBr(d) { if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; }
+  function barraFaixas(av, f) {
+    var tot = f[0] + f[1] + f[2], b = el('div', 'barra-fx');
+    if (!tot) return b;
+    f.forEach(function (n, i) { if (!n) return; var s = el('span', 'fx-' + CLS_FAIXA[i]); s.style.flexGrow = n; s.title = nomesFaixa(av)[i] + ': ' + n; s.textContent = n; b.appendChild(s); });
+    return b;
+  }
+  function carregarAvaliacoes() { var e = estado.perfil.escola; return D.avaliacoes.listar(e.id, e.ano_letivo).then(function (l) { estado.avaliacoes = l; return l; }); }
+
+  // ---------- cards de avaliação na tela da turma ----------
+  function cardsAvaliacoesTurma(box, t, alunos) {
+    var sec = el('div', 'sec-avs'); box.appendChild(sec);
+    sec.appendChild(el('div', 'vazio', 'Carregando as avaliações…'));
+    carregarAvaliacoes().then(function (avs) {
+      var minhas = avs.filter(function (a) { return mesmaSerie(a, t); });
+      sec.textContent = '';
+      var h = el('div', 'sec-tit'); h.appendChild(el('h2', null, 'Avaliações')); sec.appendChild(h);
+      if (ehGestor()) { var nv = el('button', 'btn btn-peq', '+ Nova avaliação'); nv.type = 'button'; nv.onclick = function () { novaAvaliacao(t); }; h.appendChild(nv); }
+      if (!minhas.length) { sec.appendChild(el('div', 'card vazio', ehGestor() ? 'Nenhuma avaliação para o ' + rotSerie(t) + ' ainda. Toque em "+ Nova avaliação".' : 'A gestão ainda não cadastrou avaliações para o ' + rotSerie(t) + '.')); return; }
+      var g = el('div', 'avs'); sec.appendChild(g);
+      minhas.forEach(function (av) {
+        var c = el('div', 'card av'); g.appendChild(c);
+        var tp = el('div', 'av-topo'); tp.appendChild(el('h3', null, av.nome));
+        tp.appendChild(el('small', null, [dataBr(av.data), C.componentes(av).map(M.nomeComp).join(' · '), C.validas(av).length + ' questões'].filter(Boolean).join(' · ')));
+        c.appendChild(tp);
+        var corpo = el('div', 'vazio', 'Calculando…'); c.appendChild(corpo);
+        D.respostas.daAvaliacao(av.id).then(function (rs) {
+          var daTurma = {}; rs.forEach(function (r) { if (r.turma_id === t.id) daTurma[r.aluno_id] = r.marcadas; });
+          var R = C.resultadoTurma(av, alunos, daTurma, rs.map(function (r) { return r.marcadas; }));
+          corpo.className = ''; corpo.textContent = '';
+          var nums = el('div', 'nums');
+          [['Turma', pct(R.turma.media)], ['Série na escola', pct(R.serie.media)], ['Lançados', R.turma.avaliados + ' de ' + R.turma.previstos]].forEach(function (k) {
+            var d = el('div'); d.appendChild(el('small', null, k[0])); d.appendChild(el('b', null, k[1])); nums.appendChild(d);
+          });
+          corpo.appendChild(nums);
+          if (R.turma.avaliados) {
+            corpo.appendChild(barraFaixas(av, R.turma.faixas));
+            var def = R.porCodigo.filter(function (d) { return d.faixa === 0; });
+            corpo.appendChild(el('p', 'ajuda', def.length ? '▼ ' + def.length + (def.length === 1 ? ' descritor/habilidade em defasagem' : ' descritores/habilidades em defasagem') : '✓ Nenhum descritor abaixo de ' + av.faixas.limites[0] + '%'));
+          } else corpo.appendChild(el('p', 'ajuda', 'Nenhuma resposta lançada nesta turma.'));
+          var ac = el('div', 'acoes');
+          if (R.turma.avaliados) { var vr = el('button', 'btn btn-pri btn-peq', '📊 Ver resultado'); vr.type = 'button'; vr.onclick = function () { abrirResultado(av, t); }; ac.appendChild(vr); }
+          var podeLancar = ehGestor() || estado.perfil.turmas.indexOf(t.id) !== -1;
+          if (podeLancar) { var lc = el('button', 'btn btn-peq', '✏️ Lançar respostas'); lc.type = 'button'; lc.onclick = function () { abrirLancamento(av, t); }; ac.appendChild(lc); }
+          if (ehGestor()) { var ed = el('button', 'btn btn-peq', 'Editar prova'); ed.type = 'button'; ed.onclick = function () { abrirEditor(av, t); }; ac.appendChild(ed); }
+          corpo.appendChild(ac);
+        }).catch(function (e) { corpo.textContent = 'Não foi possível calcular: ' + e.message; });
+      });
+    }).catch(falhou);
+  }
+
+  // ---------- nova avaliação: escolher o modelo ----------
+  function novaAvaliacao(t) {
+    var corpo = el('div', 'modelos');
+    M.MODELOS.forEach(function (m) {
+      var b = el('button', 'modelo'); b.type = 'button';
+      b.appendChild(el('b', null, m.nome)); b.appendChild(el('small', null, m.desc));
+      b.onclick = function () {
+        fecharModal();
+        var qs = [];
+        m.comps.forEach(function (c) { for (var i = 0; i < c[1]; i++) qs.push({ n: qs.length + 1, comp: c[0], gab: '', cod: '' }); });
+        var s = t ? { etapa: t.etapa || 'EF', ano: t.ano } : { etapa: m.serie.split('-')[0], ano: Number(m.serie.split('-')[1]) };
+        abrirEditor({ nome: m.id === 'branco' ? '' : m.nome.replace(/ · .*/, ''), modelo: m.id, etapa: s.etapa, ano: s.ano, ano_letivo: estado.perfil.escola.ano_letivo,
+          escola_id: estado.perfil.escola.id, data: new Date().toISOString().slice(0, 10), faixas: JSON.parse(JSON.stringify(m.faixas)), questoes: qs,
+          descritores: JSON.parse(JSON.stringify(m.descritores)) }, t);
+      };
+      corpo.appendChild(b);
+    });
+    modal('Nova avaliação: escolha um modelo', corpo, [['Cancelar', '', fecharModal]]);
+  }
+
+  // ---------- editor da avaliação ----------
+  function abrirEditor(av0, voltarTurma) {
+    var av = JSON.parse(JSON.stringify(av0));
+    estado.voltarEditor = voltarTurma || null;
+    var box = $('tela-editor'); box.textContent = '';
+    mostrar('tela-editor', av.id ? 'Editar avaliação' : 'Nova avaliação');
+
+    // dados gerais
+    var g = el('div', 'card form');
+    g.appendChild(el('h2', null, 'Dados da avaliação'));
+    var nome = input('text', av.nome); nome.placeholder = 'Ex.: Simulado SARESP de outubro';
+    var serie = seletorSerie(valorSerie(av)), data = input('date', av.data || '');
+    g.appendChild(campo('Nome', nome));
+    var l = el('div', 'linha'); l.appendChild(campo('Ano / série', serie)); l.appendChild(campo('Data de aplicação', data)); g.appendChild(l);
+    var fl = el('div', 'linha');
+    var lim0 = input('number', av.faixas.limites[0]), lim1 = input('number', av.faixas.limites[1]); lim0.min = lim1.min = 1; lim0.max = lim1.max = 100;
+    var n0 = input('text', av.faixas.nomes[0]), n1 = input('text', av.faixas.nomes[1]), n2 = input('text', av.faixas.nomes[2]);
+    g.appendChild(el('div', 'sub', 'Faixas de desempenho'));
+    fl.appendChild(campo('Faixa 1 (abaixo de %)', lim0)); fl.appendChild(campo('Nome', n0)); g.appendChild(fl);
+    var fl2 = el('div', 'linha'); fl2.appendChild(campo('Faixa 2 (abaixo de %)', lim1)); fl2.appendChild(campo('Nome', n1)); g.appendChild(fl2);
+    var fl3 = el('div', 'linha'); fl3.appendChild(campo('Faixa 3 (o restante)', n2)); g.appendChild(fl3);
+    box.appendChild(g);
+
+    // componentes e número de questões
+    var cq = el('div', 'card form');
+    cq.appendChild(el('h2', null, 'Componentes e questões'));
+    cq.appendChild(el('p', 'ajuda', 'Diga quantas questões cada componente tem, na ordem da prova. Depois marque o gabarito e o código (descritor ou habilidade) de cada questão.'));
+    var linhasComp = el('div', 'form'); cq.appendChild(linhasComp);
+    function contagem() { var o = []; av.questoes.forEach(function (q) { var u = o[o.length - 1]; if (u && u[0] === q.comp) u[1]++; else o.push([q.comp, 1]); }); return o; }
+    var blocos = contagem(); if (!blocos.length) blocos = [['LP', 10]];
+    function seletorComp(v) { var s = el('select'); M.COMPONENTES.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; s.appendChild(o); }); s.value = v; return s; }
+    function desenharBlocos() {
+      linhasComp.textContent = '';
+      blocos.forEach(function (b, i) {
+        var li = el('div', 'linha'), sc = seletorComp(b[0]), nq = input('number', b[1]); nq.min = 1; nq.max = 120;
+        sc.onchange = function () { b[0] = sc.value; aplicarBlocos(); }; nq.onchange = function () { b[1] = Math.max(1, Math.min(120, Number(nq.value) || 1)); aplicarBlocos(); };
+        li.appendChild(campo('Componente', sc)); var cn = campo('Nº de questões', nq); cn.style.flex = '0 0 120px'; li.appendChild(cn);
+        if (blocos.length > 1) { var x = el('button', 'btn btn-peq', 'Tirar'); x.type = 'button'; x.onclick = function () { blocos.splice(i, 1); aplicarBlocos(); desenharBlocos(); }; li.appendChild(x); }
+        linhasComp.appendChild(li);
+      });
+    }
+    function aplicarBlocos() {
+      var antigas = av.questoes, qs = [], k = 0;
+      blocos.forEach(function (b) { for (var i = 0; i < b[1]; i++) { var a = antigas[k] && antigas[k].comp === b[0] ? antigas[k] : null; qs.push({ n: qs.length + 1, comp: b[0], gab: a ? a.gab : '', cod: a ? a.cod : '' }); k++; } });
+      av.questoes = qs; desenharQuestoes();
+    }
+    var mais = el('button', 'btn btn-peq', '+ Componente'); mais.type = 'button'; mais.onclick = function () { blocos.push(['MAT', 10]); aplicarBlocos(); desenharBlocos(); };
+    cq.appendChild(mais);
+    box.appendChild(cq);
+
+    // gabarito e códigos
+    var cg = el('div', 'card form');
+    cg.appendChild(el('h2', null, 'Gabarito e descritores'));
+    cg.appendChild(el('p', 'ajuda', 'Dica: digite o gabarito inteiro de uma vez (ex.: ABCDA BCDAB). Use * para questão anulada.'));
+    var rapido = input('text'); rapido.placeholder = 'Gabarito em sequência'; rapido.autocapitalize = 'characters';
+    var lr = el('div', 'linha'); lr.appendChild(campo('Gabarito rápido', rapido));
+    var bR = el('button', 'btn btn-peq', 'Aplicar'); bR.type = 'button';
+    bR.onclick = function () { var s = rapido.value.toUpperCase().replace(/[^A-E*]/g, ''); av.questoes.forEach(function (q, i) { if (s.charAt(i)) q.gab = s.charAt(i); }); desenharQuestoes(); aviso(Math.min(s.length, av.questoes.length) + ' respostas do gabarito aplicadas.'); };
+    lr.appendChild(bR); cg.appendChild(lr);
+    var tab = el('div', 'tab-q'); cg.appendChild(tab);
+    var lista = el('datalist'); lista.id = 'dl-codigos'; cg.appendChild(lista);
+    function desenharQuestoes() {
+      tab.textContent = ''; lista.textContent = '';
+      Object.keys(av.descritores || {}).forEach(function (k) { var o = el('option'); o.value = k.split('|')[1]; o.label = k.split('|')[0] + ' · ' + av.descritores[k].slice(0, 60); lista.appendChild(o); });
+      var compAtual = '';
+      av.questoes.forEach(function (q) {
+        if (q.comp !== compAtual) { compAtual = q.comp; tab.appendChild(el('div', 'tab-q-comp', M.nomeComp(q.comp))); }
+        var li = el('div', 'tab-q-li');
+        li.appendChild(el('span', 'tab-q-n', 'Q' + q.n));
+        var gb = el('div', 'letras');
+        (C.LETRAS + '*').split('').forEach(function (L) {
+          var b = el('button', 'letra' + (q.gab === L ? ' on' : ''), L); b.type = 'button'; b.setAttribute('aria-label', 'Questão ' + q.n + ' gabarito ' + (L === '*' ? 'anulada' : L));
+          b.onclick = function () { q.gab = L; Array.prototype.forEach.call(gb.children, function (x) { x.classList.toggle('on', x === b); }); };
+          gb.appendChild(b);
+        });
+        li.appendChild(gb);
+        var cod = input('text', q.cod); cod.setAttribute('list', 'dl-codigos'); cod.placeholder = 'D1 / EF05LP03'; cod.className = 'tab-q-cod'; cod.setAttribute('aria-label', 'Código da questão ' + q.n);
+        cod.oninput = function () { q.cod = cod.value.trim().toUpperCase(); dsc.textContent = (av.descritores || {})[q.comp + '|' + q.cod] || ''; };
+        li.appendChild(cod);
+        var dsc = el('small', 'tab-q-desc', (av.descritores || {})[q.comp + '|' + q.cod] || ''); li.appendChild(dsc);
+        tab.appendChild(li);
+      });
+    }
+
+    // descrições dos códigos
+    var cd = el('div', 'card form');
+    cd.appendChild(el('h2', null, 'Descrição dos códigos'));
+    cd.appendChild(el('p', 'ajuda', 'Os códigos usados nas questões aparecem aqui. Escreva o que cada um avalia (ex.: a habilidade da BNCC) para o resultado ficar claro para os professores.'));
+    var listaD = el('div', 'form'); cd.appendChild(listaD);
+    var bD = el('button', 'btn btn-peq', 'Atualizar lista de códigos'); bD.type = 'button'; bD.onclick = desenharDescricoes; cd.appendChild(bD);
+    function desenharDescricoes() {
+      listaD.textContent = '';
+      var usados = []; av.questoes.forEach(function (q) { var k = q.cod ? q.comp + '|' + q.cod : ''; if (k && usados.indexOf(k) === -1) usados.push(k); });
+      if (!usados.length) { listaD.appendChild(el('p', 'ajuda', 'Nenhum código nas questões ainda.')); return; }
+      usados.forEach(function (k) {
+        var ta = el('textarea'); ta.rows = 2; ta.value = (av.descritores || {})[k] || '';
+        ta.oninput = function () { av.descritores[k] = ta.value.trim(); };
+        listaD.appendChild(campo(M.nomeComp(k.split('|')[0]) + ' · ' + k.split('|')[1], ta));
+      });
+    }
+
+    box.appendChild(cg); box.appendChild(cd);
+    desenharBlocos(); desenharQuestoes(); desenharDescricoes();
+
+    // salvar / apagar
+    var ac = el('div', 'acoes barra-salvar');
+    var sv = el('button', 'btn btn-pri', 'Salvar avaliação'); sv.type = 'button';
+    sv.onclick = function () {
+      var lim = [Number(lim0.value), Number(lim1.value)];
+      if (nome.value.trim().length < 3) { aviso('Digite o nome da avaliação.', 'err'); nome.focus(); return; }
+      if (!(lim[0] > 0 && lim[1] > lim[0] && lim[1] <= 100)) { aviso('Confira as faixas: a faixa 2 precisa ser maior que a faixa 1.', 'err'); return; }
+      var semGab = av.questoes.filter(function (q) { return !q.gab; }).length;
+      var sr = lerSerie(serie);
+      av.nome = nome.value.trim(); av.etapa = sr.etapa; av.ano = sr.ano; av.data = data.value || null;
+      av.faixas = { limites: lim, nomes: [n0.value.trim() || 'Faixa 1', n1.value.trim() || 'Faixa 2', n2.value.trim() || 'Faixa 3'] };
+      sv.disabled = true;
+      D.avaliacoes.salvar(av).then(function (x) {
+        aviso(semGab ? 'Avaliação salva. Faltam ' + semGab + ' questões sem gabarito.' : 'Avaliação salva.');
+        av.id = x.id; voltarDoEditor();
+      }).catch(falhou).then(function () { sv.disabled = false; });
+    };
+    ac.appendChild(sv);
+    if (av.id) {
+      var ap = el('button', 'btn btn-perigo', 'Apagar avaliação'); ap.type = 'button';
+      ap.onclick = function () { confirmar('Apagar "' + av.nome + '"?', 'Todas as respostas lançadas nesta avaliação também serão apagadas. Isso não pode ser desfeito.', 'Apagar', function () {
+        D.avaliacoes.apagar(av.id).then(function () { aviso('Avaliação apagada.'); voltarDoEditor(); }).catch(falhou); }); };
+      ac.appendChild(ap);
+    }
+    box.appendChild(ac);
+  }
+  function voltarDoEditor() { if (estado.voltarEditor) abrirTurma(estado.voltarEditor); else abrirListaAvaliacoes(); }
+
+  // ---------- lista de todas as avaliações (gestão) ----------
+  function abrirListaAvaliacoes() {
+    var box = $('tela-avaliacoes'); carregando(box); mostrar('tela-avaliacoes', 'Avaliações');
+    carregarAvaliacoes().then(function (avs) {
+      box.textContent = '';
+      var topo = el('div', 'card');
+      topo.appendChild(el('h2', null, 'Avaliações de ' + estado.perfil.escola.ano_letivo));
+      topo.appendChild(el('p', 'ajuda', 'Cadastre cada prova com gabarito e descritores. Os professores lançam as respostas dos alunos na tela de cada turma.'));
+      var nv = el('button', 'btn btn-pri', '+ Nova avaliação'); nv.type = 'button'; nv.style.marginTop = '10px'; nv.onclick = function () { novaAvaliacao(null); };
+      topo.appendChild(nv); box.appendChild(topo);
+      var c = el('div', 'card'); var ul = el('ul', 'lista'); c.appendChild(ul); box.appendChild(c);
+      if (!avs.length) ul.appendChild(el('li', 'vazio', 'Nenhuma avaliação cadastrada.'));
+      avs.forEach(function (av) {
+        var li = el('li'); li.setAttribute('data-ano', chaveSerie(av));
+        li.appendChild(el('span', 'bloco-ano-selo', seloSerie(av)));
+        var nm = el('span', 'nome', av.nome); nm.appendChild(el('small', null, [rotSerie(av), dataBr(av.data), C.validas(av).length + ' questões'].filter(Boolean).join(' · '))); li.appendChild(nm);
+        var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { abrirEditor(av, null); }; li.appendChild(ed);
+        ul.appendChild(li);
+      });
+    }).catch(falhou);
+  }
+
+  // ---------- lançar respostas ----------
+  function abrirLancamento(av, t) {
+    estado.lanc = { av: av, t: t };
+    var box = $('tela-lancar'); carregando(box); mostrar('tela-lancar', 'Lançar · ' + nomeTurma(t));
+    Promise.all([D.alunos.listar(t.id), D.respostas.daAvaliacao(av.id)]).then(function (r) {
+      var alunos = r[0].filter(function (a) { return a.ativo; }), resp = {};
+      r[1].forEach(function (x) { if (x.turma_id === t.id) resp[x.aluno_id] = x.marcadas; });
+      box.textContent = '';
+      var c = el('div', 'card'); c.appendChild(el('h2', null, av.nome));
+      var feitos = alunos.filter(function (a) { return C.fez(resp[a.id]); }).length;
+      c.appendChild(el('p', 'ajuda', feitos + ' de ' + alunos.length + ' alunos lançados. Toque no aluno para marcar as respostas.'));
+      box.appendChild(c);
+      var lc = el('div', 'card'); var ul = el('ul', 'lista'); lc.appendChild(ul); box.appendChild(lc);
+      if (!alunos.length) ul.appendChild(el('li', 'vazio', 'Nenhum aluno ativo nesta turma.'));
+      alunos.forEach(function (a, i) {
+        var li = el('li', 'li-toque'); li.tabIndex = 0; li.setAttribute('role', 'button');
+        li.appendChild(el('span', 'n', a.numero)); li.appendChild(el('span', 'nome', a.nome));
+        if (C.fez(resp[a.id])) { var rr = C.corrigir(av, resp[a.id]); li.appendChild(etqFaixa(av, C.faixaDe(av, rr.pct))); li.appendChild(el('b', 'pct-al', pct(rr.pct))); }
+        else li.appendChild(el('span', 'etq', 'Falta lançar'));
+        li.onclick = li.onkeydown = function (e) { if (e.type === 'keydown' && e.key !== 'Enter') return; folhaAluno(av, t, alunos, i, resp); };
+        ul.appendChild(li);
+      });
+    }).catch(falhou);
+  }
+  function folhaAluno(av, t, alunos, i, resp) {
+    var a = alunos[i], marc = (resp[a.id] || '').split(''), V = av.questoes;
+    while (marc.length < V.length) marc.push('-');
+    var corpo = el('div', 'form');
+    var rap = input('text', C.fez(resp[a.id]) ? resp[a.id] : ''); rap.placeholder = 'Ex.: ABCDA-BCD (traço = em branco)'; rap.autocapitalize = 'characters';
+    var lr = el('div', 'linha'); lr.appendChild(campo('Digitar tudo de uma vez', rap));
+    var bR = el('button', 'btn btn-peq', 'Aplicar'); bR.type = 'button'; lr.appendChild(bR); corpo.appendChild(lr);
+    var grade = el('div', 'tab-q'); corpo.appendChild(grade);
+    var compAtual = '';
+    function desenhar() {
+      grade.textContent = ''; compAtual = '';
+      V.forEach(function (q, k) {
+        if (q.comp !== compAtual) { compAtual = q.comp; grade.appendChild(el('div', 'tab-q-comp', M.nomeComp(q.comp))); }
+        var li = el('div', 'tab-q-li'); li.appendChild(el('span', 'tab-q-n', 'Q' + q.n));
+        var gb = el('div', 'letras');
+        (C.LETRAS + '-').split('').forEach(function (L) {
+          var b = el('button', 'letra' + (marc[k] === L ? ' on' : ''), L === '-' ? '∅' : L); b.type = 'button'; b.setAttribute('aria-label', 'Questão ' + q.n + ': ' + (L === '-' ? 'em branco' : L));
+          b.onclick = function () { marc[k] = L; Array.prototype.forEach.call(gb.children, function (x) { x.classList.toggle('on', x === b); }); };
+          gb.appendChild(b);
+        });
+        li.appendChild(gb);
+        if (q.gab === '*') li.appendChild(el('small', 'tab-q-desc', 'anulada'));
+        grade.appendChild(li);
+      });
+    }
+    bR.onclick = function () { var s = rap.value.toUpperCase().replace(/[^A-E\-]/g, ''); for (var k = 0; k < V.length; k++) marc[k] = s.charAt(k) || '-'; desenhar(); };
+    desenhar();
+    function salvar(depois) {
+      var m = marc.join('');
+      var p = C.fez(m) ? D.respostas.salvar({ avaliacao_id: av.id, aluno_id: a.id, turma_id: t.id, escola_id: t.escola_id, marcadas: m }) : D.respostas.apagar(av.id, a.id);
+      p.then(function () { if (C.fez(m)) resp[a.id] = m; else delete resp[a.id]; fecharModal(); aviso('Respostas de ' + a.nome.split(' ')[0] + ' salvas.'); depois(); }).catch(falhou);
+    }
+    var botoes = [['Cancelar', '', fecharModal]];
+    if (C.fez(resp[a.id])) botoes.push(['Faltou (apagar)', 'btn-perigo', function () { marc = marc.map(function () { return '-'; }); salvar(function () { abrirLancamento(av, t); }); }]);
+    botoes.push(['Salvar', '', function () { salvar(function () { abrirLancamento(av, t); }); }]);
+    if (i < alunos.length - 1) botoes.push(['Salvar e próximo', 'btn-pri', function () { salvar(function () { folhaAluno(av, t, alunos, i + 1, resp); }); }]);
+    modal(a.numero + ' · ' + a.nome, corpo, botoes);
+  }
+
+  // ---------- resultado da turma ----------
+  var ESTRATEGIAS = {
+    0: { titulo: 'Retomada intensiva', itens: ['Agrupar os alunos e retomar os códigos mais errados com atividades curtas e diárias.', 'Começar por exemplos resolvidos e material concreto ou visual antes de voltar ao formato da prova.', 'Rever o grupo a cada 2 semanas com uma tarefa rápida de 3 a 5 questões dos mesmos códigos.'] },
+    1: { titulo: 'Consolidação', itens: ['Atividades em duplas com um colega monitor e correção comentada.', 'Questões no formato da prova com análise das alternativas erradas (por que a pessoa escolheu aquela?).', 'Lista de exercícios graduada, do mais simples ao mais parecido com a avaliação.'] }
+  };
+  function abrirResultado(av, t) {
+    var box = $('tela-resultado'); carregando(box, 'Calculando…'); mostrar('tela-resultado', nomeTurma(t) + ' · resultado');
+    Promise.all([D.alunos.listar(t.id), D.respostas.daAvaliacao(av.id)]).then(function (r) {
+      var daTurma = {}; r[1].forEach(function (x) { if (x.turma_id === t.id) daTurma[x.aluno_id] = x.marcadas; });
+      var R = C.resultadoTurma(av, r[0], daTurma, r[1].map(function (x) { return x.marcadas; }));
+      box.textContent = '';
+      var cab = el('div', 'card'); cab.setAttribute('data-ano', chaveSerie(t));
+      cab.appendChild(el('h2', null, av.nome));
+      cab.appendChild(el('p', 'ajuda', 'Turma ' + nomeTurma(t) + ' · ' + R.turma.avaliados + ' de ' + R.turma.previstos + ' alunos lançados' + (R.faltaram.length ? ' · faltam ' + R.faltaram.length : '') + ' · faixas: abaixo de ' + av.faixas.limites[0] + '% ' + nomesFaixa(av)[0].toLowerCase() + ', abaixo de ' + av.faixas.limites[1] + '% ' + nomesFaixa(av)[1].toLowerCase() + '.'));
+      box.appendChild(cab);
+      var abas = [['res', 'Resumo'], ['desc', 'Descritores'], ['alu', 'Alunos'], ['q', 'Questões'], ['enc', 'Encaminhamentos']];
+      var ch = el('div', 'chips'); ch.setAttribute('role', 'tablist'); box.appendChild(ch);
+      var area = el('div', 'area-res'); box.appendChild(area);
+      function ir(id) {
+        Array.prototype.forEach.call(ch.children, function (b) { b.setAttribute('aria-selected', b.dataset.id === id); });
+        area.textContent = ''; ({ res: resResumo, desc: resDescritores, alu: resAlunos, q: resQuestoes, enc: resEncaminhamentos })[id](area, av, R);
+      }
+      abas.forEach(function (a) { var b = el('button', null, a[1]); b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = a[0]; b.onclick = function () { ir(a[0]); }; ch.appendChild(b); });
+      ir('res');
+    }).catch(falhou);
+  }
+  function resResumo(area, av, R) {
+    var tiles = el('div', 'tiles');
+    function tile(rot, val, sub) { var t = el('div', 'tile'); t.appendChild(el('small', null, rot)); t.appendChild(el('b', null, val)); if (sub) t.appendChild(el('span', null, sub)); tiles.appendChild(t); }
+    tile('Geral da turma', pct(R.turma.media), 'Série na escola: ' + pct(R.serie.media));
+    R.comps.forEach(function (c) { tile(M.nomeComp(c), pct(R.turma.porComp[c]), 'Série: ' + pct(R.serie.porComp[c])); });
+    area.appendChild(tiles);
+    R.comps.forEach(function (c) {
+      var cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c) + ' · alunos por faixa'));
+      cc.appendChild(barraFaixas(av, R.turma.faixasComp[c]));
+      var lg = el('div', 'legenda'); [0, 1, 2].forEach(function (f) { lg.appendChild(etqFaixa(av, f)); lg.lastChild.textContent += ': ' + R.turma.faixasComp[c][f]; }); cc.appendChild(lg);
+      area.appendChild(cc);
+    });
+    if (R.faltaram.length) { var fc = el('div', 'card'); fc.appendChild(el('h3', null, 'Sem respostas lançadas (' + R.faltaram.length + ')')); fc.appendChild(el('p', 'ajuda', R.faltaram.map(function (a) { return a.numero + ' ' + a.nome; }).join(' · '))); area.appendChild(fc); }
+  }
+  function resDescritores(area, av, R) {
+    if (!R.porCodigo.length) { area.appendChild(el('div', 'card vazio', 'As questões desta avaliação ainda não têm código de descritor ou habilidade. A gestão pode cadastrar em "Editar prova".')); return; }
+    R.comps.forEach(function (c) {
+      var ds = R.porCodigo.filter(function (d) { return d.comp === c; }); if (!ds.length) return;
+      var cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c)));
+      cc.appendChild(el('p', 'ajuda', 'Do mais crítico para o mais forte. Em vermelho: defasagem (abaixo de ' + av.faixas.limites[0] + '%).'));
+      ds.forEach(function (d) {
+        var li = el('div', 'desc-li fx-borda-' + CLS_FAIXA[d.faixa]);
+        var tp = el('div', 'desc-topo'); tp.appendChild(el('b', null, d.cod)); tp.appendChild(el('span', 'desc-pct fx-txt-' + CLS_FAIXA[d.faixa], pct(d.pct)));
+        li.appendChild(tp);
+        var barra = el('div', 'mini-barra'); var f = el('span', 'fx-' + CLS_FAIXA[d.faixa]); f.style.width = Math.round((d.pct || 0) * 100) + '%'; barra.appendChild(f); li.appendChild(barra);
+        if (d.desc) li.appendChild(el('p', null, d.desc));
+        li.appendChild(el('small', null, (d.questoes.length > 1 ? 'Questões ' : 'Questão ') + d.questoes.join(', ')));
+        cc.appendChild(li);
+      });
+      area.appendChild(cc);
+    });
+  }
+  function resAlunos(area, av, R) {
+    var busca = input('search'); busca.placeholder = 'Buscar aluno'; busca.className = 'busca'; busca.setAttribute('aria-label', 'Buscar aluno');
+    area.appendChild(busca);
+    var cc = el('div', 'card'); var ul = el('ul', 'lista'); cc.appendChild(ul); area.appendChild(cc);
+    cc.insertBefore(el('p', 'ajuda', 'Do menor para o maior acerto. Abaixo de cada nome, os códigos que o aluno errou.'), ul);
+    R.porAluno.forEach(function (r) {
+      var li = el('li'); li.dataset.nome = r.aluno.nome.toLowerCase();
+      li.appendChild(el('span', 'n', r.aluno.numero));
+      var nm = el('span', 'nome', r.aluno.nome);
+      var porC = R.comps.map(function (c) { return c + ' ' + pct(r.porComp[c]); }).join(' · ');
+      var errs = R.comps.map(function (c) {
+        var l = r.erradas.filter(function (k) { return k.indexOf(c + '|') === 0; }).map(function (k) { return k.split('|')[1]; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+        return l.length ? c + ': ' + l.join(', ') : '';
+      }).filter(Boolean);
+      nm.appendChild(el('small', null, porC + (errs.length ? ' · errou ' + errs.join(' · ') : '')));
+      li.appendChild(nm); li.appendChild(etqFaixa(av, r.faixa)); li.appendChild(el('b', 'pct-al', pct(r.pct)));
+      ul.appendChild(li);
+    });
+    busca.oninput = function () { var q = busca.value.toLowerCase().trim(); Array.prototype.forEach.call(ul.children, function (li) { li.classList.toggle('hidden', !!q && li.dataset.nome.indexOf(q) === -1); }); };
+  }
+  function resQuestoes(area, av, R) {
+    var cc = el('div', 'card'); cc.appendChild(el('p', 'ajuda', 'Acerto de cada questão e a alternativa errada mais marcada (pista do erro da turma).'));
+    var g = el('div', 'grade-q'); cc.appendChild(g);
+    R.porQuestao.forEach(function (q) {
+      var f = q.pct == null ? 0 : C.faixaDe(av, q.pct);
+      var d = el('div', 'q-cel fx-borda-' + CLS_FAIXA[f]);
+      d.appendChild(el('b', null, 'Q' + q.n)); d.appendChild(el('span', 'fx-txt-' + CLS_FAIXA[f], pct(q.pct)));
+      d.appendChild(el('small', null, q.comp + (q.cod ? ' · ' + q.cod : '') + ' · gab. ' + q.gab + (q.distrator ? ' · mais errada: ' + q.distrator : '')));
+      g.appendChild(d);
+    });
+    area.appendChild(cc);
+  }
+  function resEncaminhamentos(area, av, R) {
+    area.appendChild(el('p', 'ajuda', 'Grupos sugeridos para reagrupamento, com os códigos que cada grupo mais errou. É um ponto de partida: ajuste com o que você conhece da turma.'));
+    R.comps.forEach(function (c) {
+      var G = R.grupos[c], cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c)));
+      [0, 1].forEach(function (f) {
+        var gr = f === 0 ? G.abaixo : G.basico;
+        var bl = el('div', 'grupo fx-borda-' + CLS_FAIXA[f]);
+        bl.appendChild(el('b', null, ICO_FAIXA[f] + ' ' + nomesFaixa(av)[f] + ' · ' + ESTRATEGIAS[f].titulo + ' (' + gr.alunos.length + ')'));
+        if (!gr.alunos.length) { bl.appendChild(el('p', 'ajuda', 'Nenhum aluno nesta faixa.')); cc.appendChild(bl); return; }
+        bl.appendChild(el('p', null, gr.alunos.map(function (r) { return r.aluno.nome + ' (' + pct(r.porComp[c]) + ')'; }).join(' · ')));
+        if (gr.frageis.length) {
+          bl.appendChild(el('small', 'sub', 'O que o grupo mais errou'));
+          var ul = el('ul'); gr.frageis.forEach(function (x) { ul.appendChild(el('li', null, x.cod + (x.desc ? ' – ' + x.desc : '') + ' (' + x.erraram + ' de ' + x.de + ' erraram)')); }); bl.appendChild(ul);
+        }
+        bl.appendChild(el('small', 'sub', 'Sugestões'));
+        var ul2 = el('ul'); ESTRATEGIAS[f].itens.forEach(function (s) { ul2.appendChild(el('li', null, s)); }); bl.appendChild(ul2);
+        cc.appendChild(bl);
+      });
+      var mon = el('div', 'grupo fx-borda-good');
+      mon.appendChild(el('b', null, '🤝 Monitores sugeridos (90% ou mais)'));
+      mon.appendChild(el('p', null, G.monitores.length ? G.monitores.map(function (r) { return r.aluno.nome; }).join(' · ') : 'Nenhum aluno com 90% ou mais.'));
+      cc.appendChild(mon);
+      area.appendChild(cc);
+    });
+  }
+
+  /* =====================  Apoio presencial (fase 3)  ===================== */
+  var DIAS = ['', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], DIAS_C = ['', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  var TURNOS = ['Manhã', 'Tarde', 'Integral', 'Noite'];
+  function isoLocal(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function deIso(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2], 12); }
+  function somaDias(iso, n) { var d = deIso(iso); d.setDate(d.getDate() + n); return isoLocal(d); }
+  function segundaDe(iso) { var d = deIso(iso); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoLocal(d); }
+  function diaSemana(iso) { return deIso(iso).getDay(); }
+  function dataLonga(iso) { var d = deIso(iso); return DIAS[d.getDay()] + ', ' + d.getDate() + '/' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function chaveProf(x) { return x.professor_id || String(x.professor_nome || '').toLowerCase().trim(); }
+  function nomeProf(x, perfis) { if (x.professor_id) { var p = (perfis || []).filter(function (y) { return y.id === x.professor_id; })[0]; return p ? (p.nome || p.email) : (x.professor_nome || 'Professor(a)'); } return x.professor_nome || ''; }
+  function turnosDaEscola() { var l = []; (estado.turmas || []).forEach(function (t) { if (l.indexOf(t.turno) === -1) l.push(t.turno); }); return l.length ? l.sort(function (a, b) { return TURNOS.indexOf(a) - TURNOS.indexOf(b); }) : ['Manhã']; }
+
+  // ---------- Administração › Grade ----------
+  function admGrade(box) {
+    var e = estado.perfil.escola;
+    Promise.all([carregarTurmas(), D.horarios.listar(e.id), D.grade.listar(e.id), D.perfis.listar(e.id)]).then(function (r) {
+      var ts = r[0], hs = r[1], grade = r[2], perfis = r[3].filter(function (p) { return p.ativo; });
+      if (!ts.length) { var c0 = el('div', 'card'); c0.appendChild(el('p', 'ajuda', 'Cadastre as turmas primeiro (aba Turmas).')); box.appendChild(c0); return; }
+      // horários por turno
+      var ch = el('div', 'card form'); ch.appendChild(el('h2', null, 'Horários das aulas'));
+      ch.appendChild(el('p', 'ajuda', 'Para cada turno, quantas aulas há por dia e o horário de cada uma.'));
+      var turnos = turnosDaEscola(), selT = el('select'); turnos.forEach(function (t) { var o = el('option', null, t); o.value = t; selT.appendChild(o); });
+      var nA = input('number'); nA.min = 1; nA.max = 12;
+      var lh = el('div', 'linha'); lh.appendChild(campo('Turno', selT)); var cn = campo('Aulas por dia', nA); cn.style.flex = '0 0 130px'; lh.appendChild(cn); ch.appendChild(lh);
+      var linhasH = el('div', 'horas'); ch.appendChild(linhasH);
+      function doTurno() { return hs.filter(function (h) { return h.turno === selT.value; }).sort(function (a, b) { return a.aula - b.aula; }); }
+      function desenharHoras() {
+        var l = doTurno(), n = Number(nA.value) || l.length || 5; nA.value = n; linhasH.textContent = '';
+        for (var a = 1; a <= n; a++) {
+          var h = l.filter(function (x) { return x.aula === a; })[0] || {};
+          var li = el('div', 'hora-li'); li.appendChild(el('b', null, a + 'ª'));
+          var i1 = input('time', h.inicio || ''), i2 = input('time', h.fim || ''); i1.dataset.aula = a; i1.dataset.q = 'ini'; i2.dataset.aula = a; i2.dataset.q = 'fim';
+          i1.setAttribute('aria-label', a + 'ª aula início'); i2.setAttribute('aria-label', a + 'ª aula fim');
+          li.appendChild(i1); li.appendChild(el('span', null, 'às')); li.appendChild(i2); linhasH.appendChild(li);
+        }
+      }
+      selT.onchange = function () { nA.value = ''; desenharHoras(); }; nA.onchange = desenharHoras;
+      var sh = el('button', 'btn btn-pri', 'Salvar horários'); sh.type = 'button';
+      sh.onclick = function () {
+        var lista = [], n = Number(nA.value) || 0;
+        for (var a = 1; a <= n; a++) lista.push({ aula: a, inicio: (linhasH.querySelector('[data-aula="' + a + '"][data-q="ini"]') || {}).value || '', fim: (linhasH.querySelector('[data-aula="' + a + '"][data-q="fim"]') || {}).value || '' });
+        D.horarios.salvarTurno(e.id, selT.value, lista).then(function () { aviso('Horários do turno ' + selT.value + ' salvos.'); return D.horarios.listar(e.id); }).then(function (x) { hs = x; desenharGrade(); }).catch(falhou);
+      };
+      ch.appendChild(sh); box.appendChild(ch); desenharHoras();
+
+      // grade de cada turma
+      var cg = el('div', 'card form'); cg.appendChild(el('h2', null, 'Grade horária das turmas'));
+      cg.appendChild(el('p', 'ajuda', 'Escolha a turma e o dia. Para cada aula, o componente e o professor. Salva sozinho a cada mudança.'));
+      var selTu = el('select'); ts.forEach(function (t) { var o = el('option', null, 'Turma ' + nomeTurma(t) + ' · ' + t.turno); o.value = t.id; selTu.appendChild(o); });
+      cg.appendChild(campo('Turma', selTu));
+      var diaAtivo = Math.min(5, Math.max(1, new Date().getDay() || 1));
+      var chDias = el('div', 'chips chips-dias'); cg.appendChild(chDias);
+      [1, 2, 3, 4, 5].forEach(function (d) { var b = el('button', null, DIAS_C[d]); b.type = 'button'; b.dataset.d = d; b.onclick = function () { diaAtivo = d; desenharGrade(); }; chDias.appendChild(b); });
+      var corpoG = el('div', 'grade-dia'); cg.appendChild(corpoG);
+      var dl = el('datalist'); dl.id = 'dl-profs'; cg.appendChild(dl);
+      function seletorProf(g) {
+        var s = el('select'); var o0 = el('option', null, '— professor —'); o0.value = ''; s.appendChild(o0);
+        perfis.forEach(function (p) { var o = el('option', null, p.nome || p.email); o.value = 'p:' + p.id; s.appendChild(o); });
+        var ot = el('option', null, 'Outro nome…'); ot.value = 'outro'; s.appendChild(ot);
+        s.value = g.professor_id ? 'p:' + g.professor_id : g.professor_nome ? 'outro' : '';
+        return s;
+      }
+      function desenharGrade() {
+        Array.prototype.forEach.call(chDias.children, function (b) { b.setAttribute('aria-selected', Number(b.dataset.d) === diaAtivo); });
+        var t = ts.filter(function (x) { return x.id === selTu.value; })[0];
+        var aulas = hs.filter(function (h) { return h.turno === t.turno; }).sort(function (a, b) { return a.aula - b.aula; });
+        corpoG.textContent = '';
+        if (!aulas.length) { corpoG.appendChild(el('p', 'ajuda', 'Cadastre primeiro os horários do turno ' + t.turno + ' (acima).')); return; }
+        aulas.forEach(function (h) {
+          var g = grade.filter(function (x) { return x.turma_id === t.id && x.dia === diaAtivo && x.aula === h.aula; })[0] || { escola_id: e.id, turma_id: t.id, dia: diaAtivo, aula: h.aula, componente: '', professor_id: null, professor_nome: '' };
+          var li = el('div', 'gd-li');
+          var cab = el('div', 'gd-cab'); cab.appendChild(el('b', null, h.aula + 'ª aula')); cab.appendChild(el('small', null, (h.inicio || '') + (h.fim ? '–' + h.fim : ''))); li.appendChild(cab);
+          var sc = el('select'); var c0 = el('option', null, '— componente —'); c0.value = ''; sc.appendChild(c0);
+          M.COMPONENTES.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; sc.appendChild(o); }); sc.value = g.componente || '';
+          var sp = seletorProf(g), nomeLivre = input('text', g.professor_id ? '' : g.professor_nome); nomeLivre.placeholder = 'Nome do professor'; nomeLivre.classList.toggle('hidden', sp.value !== 'outro');
+          sc.setAttribute('aria-label', h.aula + 'ª aula componente'); sp.setAttribute('aria-label', h.aula + 'ª aula professor'); nomeLivre.setAttribute('aria-label', h.aula + 'ª aula nome do professor');
+          function gravar() {
+            var v = sp.value;
+            var novo = { escola_id: e.id, turma_id: t.id, dia: diaAtivo, aula: h.aula, componente: sc.value,
+              professor_id: v.indexOf('p:') === 0 ? v.slice(2) : null, professor_nome: v === 'outro' ? nomeLivre.value.trim() : '' };
+            D.grade.salvar(novo).then(function () {
+              grade = grade.filter(function (x) { return !(x.turma_id === t.id && x.dia === diaAtivo && x.aula === h.aula); });
+              if (novo.componente || novo.professor_id || novo.professor_nome) grade.push(novo);
+              aviso('Salvo: ' + nomeTurma(t) + ', ' + DIAS[diaAtivo].toLowerCase() + ', ' + h.aula + 'ª aula.');
+            }).catch(falhou);
+          }
+          sc.onchange = gravar;
+          sp.onchange = function () { nomeLivre.classList.toggle('hidden', sp.value !== 'outro'); if (sp.value === 'outro') nomeLivre.focus(); else gravar(); };
+          nomeLivre.onchange = gravar;
+          var ls = el('div', 'gd-campos'); ls.appendChild(sc); ls.appendChild(sp); ls.appendChild(nomeLivre); li.appendChild(ls);
+          corpoG.appendChild(li);
+        });
+      }
+      selTu.onchange = desenharGrade;
+      box.appendChild(cg); desenharGrade();
+    }).catch(falhou);
+  }
+
+  // ---------- Agenda do apoio (gestão) ----------
+  function abrirApoio(dataIso) {
+    var e = estado.perfil.escola;
+    var dia = dataIso || estado.apoioDia || isoLocal(new Date());
+    var dw = diaSemana(dia); if (dw === 0) dia = somaDias(dia, 1); else if (dw === 6) dia = somaDias(dia, 2);
+    estado.apoioDia = dia;
+    var box = $('tela-apoio'); carregando(box, 'Carregando a grade do dia…'); mostrar('tela-apoio', 'Apoio presencial');
+    var seg = segundaDe(dia), sex = somaDias(seg, 4);
+    Promise.all([carregarTurmas(), D.horarios.listar(e.id), D.grade.listar(e.id), D.apoios.listar(e.id, seg, sex), D.perfis.listar(e.id)]).then(function (r) {
+      var ts = r[0], hs = r[1], grade = r[2], apoios = r[3], perfis = r[4];
+      box.textContent = '';
+      // navegação por dia
+      var nav = el('div', 'card nav-dia');
+      var ant = el('button', 'btn btn-peq', '‹'); ant.type = 'button'; ant.setAttribute('aria-label', 'Dia anterior');
+      var prox = el('button', 'btn btn-peq', '›'); prox.type = 'button'; prox.setAttribute('aria-label', 'Próximo dia');
+      ant.onclick = function () { var d = somaDias(dia, -1); if (diaSemana(d) === 0) d = somaDias(d, -2); abrirApoio(d); };
+      prox.onclick = function () { var d = somaDias(dia, 1); if (diaSemana(d) === 6) d = somaDias(d, 2); abrirApoio(d); };
+      var meio = el('div', 'nav-dia-meio'); meio.appendChild(el('b', null, dataLonga(dia)));
+      var hoje = isoLocal(new Date()); meio.appendChild(el('small', null, dia === hoje ? 'Hoje' : 'Semana de ' + dataLonga(seg).split(', ')[1] + ' a ' + dataLonga(sex).split(', ')[1]));
+      var esc = input('date', dia); esc.setAttribute('aria-label', 'Escolher a data'); esc.onchange = function () { if (esc.value) abrirApoio(esc.value); };
+      nav.appendChild(ant); nav.appendChild(meio); nav.appendChild(prox); nav.appendChild(esc);
+      box.appendChild(nav);
+      // resumo da semana
+      var profsGrade = {}; grade.forEach(function (g) { var k = chaveProf(g); if (k) profsGrade[k] = nomeProf(g, perfis); });
+      var comApoio = {}; apoios.forEach(function (a) { comApoio[chaveProf(a)] = true; });
+      var sem = Object.keys(profsGrade).filter(function (k) { return !comApoio[k]; }).map(function (k) { return profsGrade[k]; }).sort();
+      var rs = el('details', 'card');
+      rs.appendChild(el('summary', null, 'Semana: ' + apoios.length + (apoios.length === 1 ? ' apoio' : ' apoios') + ' · ' + sem.length + ' professores ainda sem apoio'));
+      rs.appendChild(el('p', 'ajuda', sem.length ? sem.join(' · ') : 'Todos os professores da grade já têm apoio nesta semana.'));
+      var doDia = apoios.filter(function (a) { return a.data === dia; });
+      if (doDia.length) { var ul = el('ul', 'lista'); doDia.forEach(function (a) { var t = ts.filter(function (x) { return x.id === a.turma_id; })[0]; ul.appendChild(el('li', null, a.aula + 'ª aula · ' + (t ? nomeTurma(t) : '') + ' · ' + nomeProf(a, perfis) + ' · com ' + a.apoiador_nome)); }); rs.appendChild(el('small', 'sub', 'Hoje')); rs.appendChild(ul); }
+      box.appendChild(rs);
+      if (!grade.length) {
+        var c0 = el('div', 'card'); c0.appendChild(el('h2', null, 'Falta a grade horária'));
+        c0.appendChild(el('p', 'ajuda', 'Cadastre os horários e a grade das turmas em Administração › Grade. Depois a agenda aparece aqui.'));
+        var b0 = el('button', 'btn btn-pri', 'Cadastrar a grade'); b0.type = 'button'; b0.style.marginTop = '10px'; b0.onclick = function () { abrirAdmin('grade'); }; c0.appendChild(b0);
+        box.appendChild(c0); return;
+      }
+      // grade do dia por turno e turma
+      turnosDaEscola().forEach(function (turno) {
+        var tsT = ts.filter(function (t) { return t.turno === turno; }); if (!tsT.length) return;
+        var hT = hs.filter(function (h) { return h.turno === turno; }).sort(function (a, b) { return a.aula - b.aula; });
+        var sec = el('div', 'card'); sec.appendChild(el('h3', null, turno));
+        tsT.forEach(function (t) {
+          var linha = el('div', 'ag-turma'); linha.setAttribute('data-ano', chaveSerie(t));
+          linha.appendChild(el('span', 'bloco-ano-selo ag-selo', nomeTurma(t)));
+          var aulas = el('div', 'ag-aulas');
+          (hT.length ? hT : [1, 2, 3, 4, 5].map(function (a) { return { aula: a }; })).forEach(function (h) {
+            var g = grade.filter(function (x) { return x.turma_id === t.id && x.dia === diaSemana(dia) && x.aula === h.aula; })[0];
+            var ap = apoios.filter(function (a) { return a.data === dia && a.turma_id === t.id && a.aula === h.aula; })[0];
+            var b = el('button', 'ag-aula' + (ap ? ' tem-apoio' : '') + (g ? '' : ' vaga')); b.type = 'button';
+            b.appendChild(el('b', null, h.aula + 'ª ' + (g && g.componente ? g.componente : '')));
+            b.appendChild(el('small', null, ap ? '👁 ' + ap.apoiador_nome : g ? (nomeProf(g, perfis) || '—') : 'sem aula'));
+            b.setAttribute('aria-label', nomeTurma(t) + ', ' + h.aula + 'ª aula' + (ap ? ', apoio com ' + ap.apoiador_nome : ''));
+            b.disabled = !g && !ap;
+            b.onclick = function () { if (ap) verApoio(ap, t, perfis); else agendar(t, h, g, dia, apoios, perfis); };
+            aulas.appendChild(b);
+          });
+          linha.appendChild(aulas); sec.appendChild(linha);
+        });
+        box.appendChild(sec);
+      });
+    }).catch(falhou);
+  }
+  function agendar(t, h, g, dia, apoiosSemana, perfis) {
+    var k = chaveProf(g), ja = k && apoiosSemana.filter(function (a) { return chaveProf(a) === k; })[0];
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', dataLonga(dia) + ' · ' + h.aula + 'ª aula' + (h.inicio ? ' (' + h.inicio + (h.fim ? '–' + h.fim : '') + ')' : '') + ' · Turma ' + nomeTurma(t)));
+    corpo.appendChild(el('p', null, M.nomeComp(g.componente) + ' · ' + (nomeProf(g, perfis) || 'professor não informado')));
+    if (ja) {
+      corpo.appendChild(el('p', 'erro', 'Este professor já tem apoio nesta semana (' + dataLonga(ja.data) + ', ' + ja.aula + 'ª aula, com ' + ja.apoiador_nome + '). A regra é um apoio por semana para cada professor.'));
+      modal('Agendar apoio', corpo); return;
+    }
+    var gest = perfis.filter(function (p) { return p.ativo && p.papel === 'gestor'; });
+    var sa = el('select'); gest.forEach(function (p) { var o = el('option', null, p.nome || p.email); o.value = p.id; sa.appendChild(o); }); sa.value = estado.perfil.id;
+    var foco = el('textarea'); foco.rows = 2; foco.placeholder = 'Opcional: o que observar (ex.: uso do tempo, participação dos alunos)';
+    corpo.appendChild(campo('Quem vai observar', sa)); corpo.appendChild(campo('Foco da observação', foco));
+    modal('Agendar apoio', corpo, [['Cancelar', '', fecharModal], ['Agendar', 'btn-pri', function () {
+      var p = gest.filter(function (x) { return x.id === sa.value; })[0] || estado.perfil;
+      D.apoios.salvar({ escola_id: t.escola_id, data: dia, turma_id: t.id, aula: h.aula, componente: g.componente, professor_id: g.professor_id || null, professor_nome: g.professor_id ? nomeProf(g, perfis) : g.professor_nome,
+        apoiador_id: p.id, apoiador_nome: (p.nome || p.email || '').split(' ')[0], foco: foco.value.trim() })
+        .then(function () { fecharModal(); aviso('Apoio agendado.'); abrirApoio(dia); }).catch(falhou);
+    }]]);
+  }
+  function verApoio(a, t, perfis) {
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', dataLonga(a.data) + ' · ' + a.aula + 'ª aula · Turma ' + nomeTurma(t) + ' · ' + M.nomeComp(a.componente)));
+    corpo.appendChild(el('p', null, 'Professor(a): ' + nomeProf(a, perfis) + ' · observação com ' + a.apoiador_nome + (a.status === 'realizado' ? ' · ✓ realizado' : '')));
+    if (a.foco) corpo.appendChild(el('p', null, 'Foco: ' + a.foco));
+    var dv = a.devolutiva || {};
+    var f1 = el('textarea'), f2 = el('textarea'), f3 = el('textarea'); [f1, f2, f3].forEach(function (x) { x.rows = 3; });
+    f1.value = dv.fortes || ''; f2.value = dv.melhorar || ''; f3.value = dv.combinados || '';
+    corpo.appendChild(el('small', 'sub', 'Devolutiva (o professor vê em "Meus apoios")'));
+    corpo.appendChild(campo('Pontos fortes da aula', f1)); corpo.appendChild(campo('O que pode melhorar', f2)); corpo.appendChild(campo('Combinados / próximos passos', f3));
+    modal('Apoio agendado', corpo, [
+      ['Fechar', '', fecharModal],
+      ['Cancelar apoio', 'btn-perigo', function () { confirmar('Cancelar este apoio?', 'O horário fica livre e o professor pode receber outro apoio nesta semana.', 'Cancelar apoio', function () {
+        D.apoios.salvar(Object.assign({}, a, { status: 'cancelado' })).then(function () { aviso('Apoio cancelado.'); abrirApoio(a.data); }).catch(falhou); }); }],
+      ['Salvar devolutiva', 'btn-pri', function () {
+        var d = { fortes: f1.value.trim(), melhorar: f2.value.trim(), combinados: f3.value.trim() };
+        D.apoios.salvar(Object.assign({}, a, { devolutiva: d, status: d.fortes || d.melhorar || d.combinados ? 'realizado' : a.status }))
+          .then(function () { fecharModal(); aviso('Devolutiva salva.'); abrirApoio(a.data); }).catch(falhou);
+      }]
+    ]);
+  }
+
+  // ---------- Meus apoios (professor) ----------
+  function abrirMeusApoios() {
+    var box = $('tela-apoio'); carregando(box); mostrar('tela-apoio', 'Meus apoios');
+    Promise.all([carregarTurmas(), D.apoios.meus(estado.perfil.id), D.horarios.listar(estado.perfil.escola.id)]).then(function (r) {
+      var ts = r[0], aps = r[1], hs = r[2], hoje = isoLocal(new Date());
+      box.textContent = '';
+      var intro = el('div', 'card'); intro.appendChild(el('h2', null, 'Apoio presencial'));
+      intro.appendChild(el('p', 'ajuda', 'Quando a gestão agenda uma observação de aula sua, ela aparece aqui. Depois da aula, a devolutiva também fica aqui.'));
+      box.appendChild(intro);
+      if (!aps.length) { box.appendChild(el('div', 'card vazio', 'Nenhum apoio agendado para você.')); return; }
+      var prox = aps.filter(function (a) { return a.data >= hoje; }).sort(function (a, b) { return a.data.localeCompare(b.data) || a.aula - b.aula; });
+      var pass = aps.filter(function (a) { return a.data < hoje; });
+      [['Próximos', prox], ['Anteriores', pass]].forEach(function (grp) {
+        if (!grp[1].length) return;
+        var c = el('div', 'card'); c.appendChild(el('h3', null, grp[0]));
+        grp[1].forEach(function (a) {
+          var t = ts.filter(function (x) { return x.id === a.turma_id; })[0];
+          var h = t && hs.filter(function (x) { return x.turno === t.turno && x.aula === a.aula; })[0];
+          var it = el('div', 'apoio-it' + (a.data === hoje ? ' hoje' : ''));
+          it.appendChild(el('b', null, (a.data === hoje ? 'Hoje · ' : '') + dataLonga(a.data) + ' · ' + a.aula + 'ª aula' + (h && h.inicio ? ' (' + h.inicio + ')' : '')));
+          it.appendChild(el('span', null, 'Turma ' + (t ? nomeTurma(t) : '') + ' · ' + M.nomeComp(a.componente) + ' · com ' + a.apoiador_nome));
+          if (a.foco) it.appendChild(el('small', null, 'Foco: ' + a.foco));
+          var dv = a.devolutiva || {};
+          if (dv.fortes || dv.melhorar || dv.combinados) {
+            var d = el('div', 'devolutiva');
+            if (dv.fortes) { d.appendChild(el('small', 'sub', 'Pontos fortes')); d.appendChild(el('p', null, dv.fortes)); }
+            if (dv.melhorar) { d.appendChild(el('small', 'sub', 'O que pode melhorar')); d.appendChild(el('p', null, dv.melhorar)); }
+            if (dv.combinados) { d.appendChild(el('small', 'sub', 'Combinados')); d.appendChild(el('p', null, dv.combinados)); }
+            it.appendChild(d);
+          }
+          c.appendChild(it);
+        });
+        box.appendChild(c);
+      });
+    }).catch(falhou);
+  }
+
+  /* =====================  Fluência leitora (fase 4)  ===================== */
+  var FLU_PERFIS = ['Pré-leitor 1', 'Pré-leitor 2', 'Pré-leitor 3', 'Pré-leitor 4', 'Leitor iniciante', 'Leitor fluente'];
+  var FLU_MIN_TEXTO = 15, FLU_FLUENTE_PPM = 70, FLU_FLUENTE_PREC = 0.9;
+  var FLU_NOME_PARTE = { palavras: 'Parte 1 · Palavras', pseudo: 'Parte 2 · Palavras inventadas', texto: 'Parte 3 · Texto' };
+  function fluPerfil(r) {
+    if (r.palavras === 0) return FLU_PERFIS[0];
+    if (r.palavras < 5) return FLU_PERFIS[1];
+    if (r.palavras < 10) return FLU_PERFIS[2];
+    if (r.palavras < FLU_MIN_TEXTO || r.texto == null) return FLU_PERFIS[3];
+    if (r.texto >= FLU_FLUENTE_PPM && r.precisao >= FLU_FLUENTE_PREC) return FLU_PERFIS[5];
+    return FLU_PERFIS[4];
+  }
+  function fluGrupo(p) { var i = FLU_PERFIS.indexOf(p); return i < 0 ? -1 : i === 5 ? 2 : i === 4 ? 1 : 0; }   // 0 pré, 1 iniciante, 2 fluente
+  var FLU_GRUPOS = ['Pré-leitores', 'Leitores iniciantes', 'Leitores fluentes'];
+  function fluCadernos() {
+    var e = estado.perfil.escola;
+    var prontos = (window.LUME_CADERNOS || []).map(function (c) { return { codigo: c.codigo, nome: c.nome, ano: c.ano, pronto: true, c: c }; });
+    return D.flu.cadernos(e.id).then(function (l) {
+      estado.fluCads = prontos.concat(l.map(function (x) { return { id: x.id, codigo: x.codigo, nome: x.nome, ano: x.ano, c: Object.assign({}, x.conteudo), linha: x }; }));
+      return estado.fluCads;
+    });
+  }
+  function fluUltimos(res) { var u = {}; res.forEach(function (r) { if (!u[r.aluno_id] || r.data > u[r.aluno_id].data) u[r.aluno_id] = r; }); return u; }
+  function minhasTurmas() { var p = estado.perfil; return estado.turmas.filter(function (t) { return p.papel === 'gestor' || p.turmas.indexOf(t.id) !== -1; }); }
+  function podeAplicar(t) { return ehGestor() || estado.perfil.turmas.indexOf(t.id) !== -1; }
+  function barraGrupos(cont) {
+    var b = el('div', 'barra-fx'), cls = ['critical', 'warning', 'good'];
+    cont.forEach(function (n, i) { if (!n) return; var s = el('span', 'fx-' + cls[i], n); s.style.flexGrow = n; s.title = FLU_GRUPOS[i] + ': ' + n; b.appendChild(s); });
+    return b;
+  }
+  function etqPerfil(p) { var g = fluGrupo(p); return el('span', 'fx fx-' + (['critical', 'warning', 'good'][g] || 'critical'), p.replace('Leitor ', '')); }
+
+  // ---------- lista de turmas ----------
+  function abrirFlu() {
+    estado.voltarFlu = mostrarInicio;
+    var e = estado.perfil.escola, box = $('tela-flu'); carregando(box); mostrar('tela-flu', 'Fluência leitora');
+    Promise.all([carregarTurmas(), D.flu.resultados(e.id)]).then(function (r) {
+      var res = r[1], ult = fluUltimos(res); box.textContent = '';
+      var intro = el('div', 'card');
+      intro.appendChild(el('h2', null, 'Simulado de fluência leitora'));
+      intro.appendChild(el('p', 'ajuda', 'Com o caderno impresso na mão do aluno, o app cronometra cada parte (1 minuto), você toca nas palavras que ele errar e o app classifica o leitor. Nada de áudio é gravado.'));
+      if (ehGestor()) { var bc = el('button', 'btn', '📚 Cadernos de leitura'); bc.type = 'button'; bc.style.marginTop = '10px'; bc.onclick = abrirCadernos; intro.appendChild(bc); }
+      box.appendChild(intro);
+      var ts = minhasTurmas();
+      if (!ts.length) { box.appendChild(el('div', 'card vazio', 'Nenhuma turma disponível.')); return; }
+      var g = el('div', 'bloco-ano-grade'); box.appendChild(g);
+      Promise.all(ts.map(function (t) { return D.alunos.listar(t.id); })).then(function (listas) {
+        ts.forEach(function (t, i) {
+          var al = listas[i].filter(function (a) { return a.ativo; }), cont = [0, 0, 0], feitos = 0;
+          al.forEach(function (a) { var u = ult[a.id]; if (u) { feitos++; cont[fluGrupo(u.perfil)]++; } });
+          var b = el('button', 'tc tc-flu'); b.type = 'button'; b.setAttribute('data-ano', chaveSerie(t)); b.setAttribute('aria-label', 'Fluência da turma ' + nomeTurma(t));
+          b.appendChild(el('span', 'tc-letra' + (t.letra.length > 2 ? ' longa' : ''), t.letra.slice(0, 3)));
+          var tx = el('span', 'tc-tx'); tx.appendChild(el('span', 'tc-ano', rotSerie(t))); tx.appendChild(el('b', null, 'Turma ' + t.letra));
+          tx.appendChild(el('small', null, feitos + ' de ' + al.length + ' avaliados')); b.appendChild(tx);
+          if (feitos) { var bar = barraGrupos(cont); bar.classList.add('tc-barra'); b.appendChild(bar); }
+          b.onclick = function () { fluTurma(t); };
+          g.appendChild(b);
+        });
+      });
+    }).catch(falhou);
+  }
+
+  // ---------- turma ----------
+  function fluTurma(t, filtro) {
+    estado.fluTurmaAtual = t; estado.voltarFlu = abrirFlu;
+    var e = estado.perfil.escola, box = $('tela-flu'); carregando(box); mostrar('tela-flu', 'Fluência · ' + nomeTurma(t));
+    Promise.all([D.alunos.listar(t.id), D.flu.resultados(e.id)]).then(function (r) {
+      var al = r[0].filter(function (a) { return a.ativo; }), res = r[1].filter(function (x) { return x.turma_id === t.id; }), ult = fluUltimos(res);
+      box.textContent = '';
+      var cont = [0, 0, 0], feitos = 0; al.forEach(function (a) { if (ult[a.id]) { feitos++; cont[fluGrupo(ult[a.id].perfil)]++; } });
+      var c = el('div', 'card'); c.setAttribute('data-ano', chaveSerie(t));
+      c.appendChild(el('h2', null, 'Turma ' + nomeTurma(t)));
+      var nums = el('div', 'nums');
+      [['Avaliados', feitos + ' de ' + al.length], ['Pré-leitores', cont[0]], ['Fluentes', cont[2]]].forEach(function (k) { var d = el('div'); d.appendChild(el('small', null, k[0])); d.appendChild(el('b', null, String(k[1]))); nums.appendChild(d); });
+      c.appendChild(nums);
+      if (feitos) c.appendChild(barraGrupos(cont));
+      c.appendChild(el('p', 'ajuda', 'Vale o último resultado de cada aluno. Toque no aluno para aplicar ou ver o histórico.'));
+      box.appendChild(c);
+      // filtros
+      filtro = filtro || 'todos';
+      var ch = el('div', 'chips'); ch.setAttribute('role', 'tablist');
+      [['todos', 'Todos'], ['falta', 'Ainda não fez'], ['0', 'Pré-leitor'], ['1', 'Iniciante'], ['2', 'Fluente']].forEach(function (f) {
+        var b = el('button', null, f[1]); b.type = 'button'; b.setAttribute('aria-selected', f[0] === filtro); b.onclick = function () { fluTurma(t, f[0]); }; ch.appendChild(b);
+      });
+      box.appendChild(ch);
+      var lc = el('div', 'card'), ul = el('ul', 'lista'); lc.appendChild(ul); box.appendChild(lc);
+      var lista = al.filter(function (a) { var u = ult[a.id]; return filtro === 'todos' || (filtro === 'falta' ? !u : u && String(fluGrupo(u.perfil)) === filtro); });
+      if (!lista.length) ul.appendChild(el('li', 'vazio', 'Nenhum aluno neste filtro.'));
+      lista.forEach(function (a) {
+        var u = ult[a.id], li = el('li', 'li-toque'); li.tabIndex = 0; li.setAttribute('role', 'button');
+        li.appendChild(el('span', 'n', a.numero));
+        var nm = el('span', 'nome', a.nome);
+        if (u) nm.appendChild(el('small', null, dataBr(String(u.data).slice(0, 10)) + ' · ' + u.palavras + ' palavras' + (u.texto != null ? ' · texto ' + u.texto + ' ppm' : '')));
+        li.appendChild(nm);
+        li.appendChild(u ? etqPerfil(u.perfil) : el('span', 'etq', 'Falta'));
+        li.onclick = li.onkeydown = function (ev) { if (ev.type === 'keydown' && ev.key !== 'Enter') return; fluAluno(t, a, al, res.filter(function (x) { return x.aluno_id === a.id; }), ult); };
+        ul.appendChild(li);
+      });
+    }).catch(falhou);
+  }
+  function fluAluno(t, a, alunos, hist, ult) {
+    var corpo = el('div', 'form');
+    if (!hist.length) corpo.appendChild(el('p', 'ajuda', 'Ainda sem aplicação.'));
+    hist.forEach(function (r) {
+      var it = el('div', 'flu-hist');
+      var tp = el('div', 'desc-topo'); tp.appendChild(el('b', null, dataBr(String(r.data).slice(0, 10)) + ' · ' + r.caderno)); tp.appendChild(etqPerfil(r.perfil)); it.appendChild(tp);
+      it.appendChild(el('small', null, 'Palavras: ' + r.palavras + ' · simples: ' + r.canonicas + ' · inventadas: ' + r.pseudo +
+        (r.texto != null ? ' · texto: ' + r.texto + ' ppm, ' + Math.round(r.precisao * 100) + '% de precisão' : '') + (r.compreensao != null ? ' · compreensão: ' + r.compreensao + ' de 3' : '') + (r.aplicador_nome ? ' · por ' + r.aplicador_nome : '')));
+      if (ehGestor()) { var x = el('button', 'btn-link', 'Apagar este resultado'); x.type = 'button'; x.onclick = function () { confirmar('Apagar este resultado?', 'Isso não pode ser desfeito.', 'Apagar', function () { D.flu.apagar(r.id).then(function () { aviso('Resultado apagado.'); fluTurma(t); }).catch(falhou); }); }; it.appendChild(x); }
+      corpo.appendChild(it);
+    });
+    var botoes = [['Fechar', '', fecharModal]];
+    if (podeAplicar(t)) botoes.push(['Aplicar agora', 'btn-pri', function () { fecharModal(); fluEscolherCaderno(t, a, alunos, ult); }]);
+    modal(a.numero + ' · ' + a.nome, corpo, botoes);
+  }
+
+  // ---------- aplicação ----------
+  function fluEscolherCaderno(t, a, alunos, ult) {
+    fluCadernos().then(function (cads) {
+      var chaveUlt = 'lume-flu-cad-' + t.id, ultimo = '';
+      try { ultimo = localStorage.getItem(chaveUlt) || ''; } catch (e) {}
+      var sel = el('select');
+      cads.forEach(function (c) { var o = el('option', null, c.nome + ' (' + c.codigo + ')'); o.value = c.codigo; sel.appendChild(o); });
+      var sug = cads.filter(function (c) { return c.codigo === ultimo; })[0] || cads.filter(function (c) { return t.etapa !== 'EM' && c.ano === Math.min(t.ano, 2); })[0];
+      if (sug) sel.value = sug.codigo;
+      var corpo = el('div', 'form');
+      corpo.appendChild(el('p', 'ajuda', 'O aluno lê no caderno impresso com o mesmo código. Você acompanha na tela.'));
+      corpo.appendChild(campo('Caderno', sel));
+      modal('Aplicar para ' + a.nome.split(' ')[0], corpo, [['Cancelar', '', fecharModal], ['Começar', 'btn-pri', function () {
+        try { localStorage.setItem(chaveUlt, sel.value); } catch (e) {}
+        var cad = cads.filter(function (c) { return c.codigo === sel.value; })[0];
+        fecharModal();
+        estado.fluApl = { t: t, a: a, alunos: alunos, ult: ult, cad: cad, res: {}, marcas: {}, tempos: {} };
+        fluParte('palavras');
+      }]]);
+    }).catch(falhou);
+  }
+  function fluTokens(texto) { return String(texto || '').split('\n').map(function (p) { return p.split(/\s+/).filter(function (w) { return /[A-ZÀ-Úa-zà-ú0-9]/.test(w); }); }); }
+  function fluParte(parte) {
+    var A = estado.fluApl, c = A.cad.c, box = $('tela-flu-apl'); box.textContent = '';
+    mostrar('tela-flu-apl', A.a.nome.split(' ')[0] + ' · ' + A.cad.codigo);
+    var cab = el('div', 'card');
+    cab.appendChild(el('h2', null, FLU_NOME_PARTE[parte]));
+    cab.appendChild(el('p', 'ajuda', 'Toque em Iniciar quando o aluno começar a ler. Durante a leitura, toque só nas palavras que ele ERRAR ou pular.'));
+    box.appendChild(cab);
+    var itens = [], area;
+    if (parte === 'texto') {
+      area = el('div', 'card flu-texto'); area.appendChild(el('div', 'flu-titulo', c.titulo || ''));
+      fluTokens(c.texto).forEach(function (par) { var p = el('p'); par.forEach(function (w) { var s = el('span', 'flu-it', w); p.appendChild(s); p.appendChild(document.createTextNode(' ')); itens.push(s); }); area.appendChild(p); });
+    } else {
+      area = el('div', 'flu-grade');
+      (parte === 'palavras' ? c.palavras : c.pseudo).forEach(function (w) { var s = el('span', 'flu-it' + (w.length >= 9 ? ' l9' : w.length >= 7 ? ' l7' : ''), w); area.appendChild(s); itens.push(s); });
+    }
+    var st = itens.map(function () { return 0; }), fase = 'antes', ultI = -1;   // 0 não lido, 1 certo, 2 errado
+    function pintar() {
+      itens.forEach(function (s, i) {
+        s.classList.toggle('ok', st[i] === 1); s.classList.toggle('er', st[i] === 2);
+        s.classList.toggle('depois', (fase === 'conferir' || (fase === 'ultima' && ultI >= 0)) && i > ultI);
+        s.classList.toggle('ult', (fase === 'conferir' || fase === 'ultima') && i === ultI);
+      });
+    }
+    function aplicarUltima(j) { ultI = j; for (var i = 0; i < itens.length; i++) { if (i <= ultI) { if (st[i] !== 2) st[i] = 1; } else st[i] = 0; } }
+    itens.forEach(function (s, i) {
+      s.onclick = function () {
+        if (fase === 'antes') return;
+        if (fase === 'lendo') st[i] = st[i] === 2 ? 0 : 2;
+        else if (fase === 'ultima') { aplicarUltima(i); conferir(); return; }
+        else if (i > ultI) aplicarUltima(i);
+        else st[i] = st[i] === 2 ? 1 : 2;
+        pintar();
+      };
+    });
+    var barra = el('div', 'flu-barra');
+    var rel = el('div', 'flu-relogio', '1:00');
+    var bIni = el('button', 'btn btn-pri', '▶ Iniciar 1 minuto'); bIni.type = 'button';
+    var bPar = el('button', 'btn hidden', 'Encerrar antes'); bPar.type = 'button';
+    var bNada = el('button', 'btn hidden', 'Não leu nenhuma'); bNada.type = 'button';
+    var bMudar = el('button', 'btn hidden', 'Mudar a última palavra'); bMudar.type = 'button';
+    var bOk = el('button', 'btn btn-pri hidden', 'Confirmar e continuar →'); bOk.type = 'button';
+    [rel, bIni, bPar, bNada, bMudar, bOk].forEach(function (x) { barra.appendChild(x); });
+    var leg = el('p', 'ajuda flu-leg', 'Vermelho = errou (toque de novo para desfazer).');
+    box.appendChild(barra); box.appendChild(leg); box.appendChild(area);
+    function ultima() { fase = 'ultima'; pintar(); bOk.classList.add('hidden'); bMudar.classList.add('hidden'); bNada.classList.remove('hidden'); leg.textContent = 'Tempo! Toque na ÚLTIMA palavra que o aluno leu.'; leg.classList.add('destaque'); }
+    function conferir() { fase = 'conferir'; pintar(); bNada.classList.add('hidden'); bMudar.classList.remove('hidden'); bOk.classList.remove('hidden'); leg.textContent = 'Confira: verde = certo, vermelho = errou, apagadas = não lidas. Toque para trocar. Depois confirme.'; }
+    bNada.onclick = function () { aplicarUltima(-1); conferir(); };
+    bMudar.onclick = ultima;
+    var inicio = 0, timer = null, acabou = false;
+    estado.fluEm = true;
+    bIni.onclick = function () {
+      bIni.classList.add('hidden'); bPar.classList.remove('hidden'); fase = 'lendo'; inicio = Date.now();
+      timer = setInterval(function () {
+        var r = Math.max(0, 60 - Math.floor((Date.now() - inicio) / 1000));
+        rel.textContent = Math.floor(r / 60) + ':' + ('0' + r % 60).slice(-2); rel.classList.toggle('fim', r <= 10);
+        if (r === 0) terminar();
+      }, 250);
+    };
+    bPar.onclick = terminar;
+    function terminar() {
+      if (acabou) return; acabou = true; clearInterval(timer);
+      A.tempos[parte] = Math.min(60, (Date.now() - inicio) / 1000);
+      try { if (navigator.vibrate) navigator.vibrate(300); } catch (e) {}
+      ultI = -1; for (var i = 0; i < itens.length; i++) if (st[i] === 2) ultI = i;
+      rel.textContent = 'Tempo!'; rel.classList.add('fim'); bPar.classList.add('hidden');
+      ultima();
+    }
+    bOk.onclick = function () {
+      var certos = st.filter(function (v) { return v === 1; }).length, errados = st.filter(function (v) { return v === 2; }).length;
+      A.marcas[parte] = st.map(function (v) { return v === 1 ? 'c' : v === 2 ? 'e' : '-'; }).join('');
+      if (parte === 'palavras') { A.res.palavras = certos; A.res.canonicas = st.slice(0, 20).filter(function (v) { return v === 1; }).length; fluParte('pseudo'); }
+      else if (parte === 'pseudo') { A.res.pseudo = certos; if (A.res.palavras >= FLU_MIN_TEXTO) fluParte('texto'); else { A.res.texto = null; A.res.precisao = null; fluFinal(); } }
+      else {
+        var seg = A.tempos.texto || 60, tentou = certos + errados, leuTudo = st[st.length - 1] !== 0;
+        A.res.texto = leuTudo && seg < 59 ? Math.min(250, Math.round(certos * 60 / Math.max(seg, 15))) : certos;
+        A.res.precisao = tentou ? Math.round(certos / tentou * 100) / 100 : 0;
+        if (fluPerfil(A.res) === FLU_PERFIS[5] && (c.perguntas || []).length) fluPerguntas(); else fluFinal();
+      }
+    };
+  }
+  function fluFalar(txt) {
+    try {
+      if (!window.speechSynthesis) { aviso('Este aparelho não lê em voz alta. Leia a pergunta para o aluno.'); return; }
+      speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; u.rate = 0.9;
+      var v = speechSynthesis.getVoices().filter(function (x) { return /^pt(-|_)BR/i.test(x.lang); })[0]; if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function fluPerguntas() {
+    var A = estado.fluApl, box = $('tela-flu-apl'); box.textContent = '';
+    var cab = el('div', 'card'); cab.appendChild(el('h2', null, 'Perguntas sobre o texto'));
+    cab.appendChild(el('p', 'ajuda', 'Feche o caderno. Leia (ou toque em 🔊) cada pergunta; o aluno responde falando. Marque se está certo.')); box.appendChild(cab);
+    var resp = A.cad.c.perguntas.map(function () { return null; });
+    var bOk = el('button', 'btn btn-pri', 'Ver resultado →'); bOk.type = 'button'; bOk.disabled = true;
+    A.cad.c.perguntas.forEach(function (q, i) {
+      var c = el('div', 'card form'); c.appendChild(el('b', null, (i + 1) + '. ' + q[0])); c.appendChild(el('p', 'ajuda', 'Resposta esperada: ' + q[1]));
+      var l = el('div', 'acoes');
+      var bf = el('button', 'btn btn-peq', '🔊 Ler'); bf.type = 'button'; bf.onclick = function () { fluFalar(q[0]); };
+      var bc = el('button', 'btn btn-peq', '✓ Certo'), be = el('button', 'btn btn-peq', '✗ Errado'); bc.type = be.type = 'button';
+      function marcar(v) { resp[i] = v; bc.classList.toggle('btn-pri', v === 1); be.classList.toggle('btn-perigo', v === 0); bOk.disabled = resp.some(function (x) { return x === null; }); }
+      bc.onclick = function () { marcar(1); }; be.onclick = function () { marcar(0); };
+      l.appendChild(bf); l.appendChild(bc); l.appendChild(be); c.appendChild(l); box.appendChild(c);
+    });
+    bOk.onclick = function () { A.res.compreensao = resp.reduce(function (a, b) { return a + b; }, 0); A.marcas.perguntas = resp.join(''); fluFinal(); };
+    box.appendChild(bOk);
+  }
+  function fluFinal() {
+    var A = estado.fluApl, r = A.res, c = A.cad.c, box = $('tela-flu-apl'); box.textContent = '';
+    if (r.compreensao === undefined) r.compreensao = null;
+    r.perfil = fluPerfil(r);
+    var cd = el('div', 'card flu-final');
+    cd.appendChild(el('small', 'sub', 'Resultado de ' + A.a.nome));
+    var g = fluGrupo(r.perfil), pf = el('div', 'flu-perfil fx-' + ['critical', 'warning', 'good'][g], r.perfil); cd.appendChild(pf);
+    var ul = el('ul', 'lista');
+    function item(t, v) { var li = el('li'); li.appendChild(el('span', 'nome', t)); li.appendChild(el('b', null, v)); ul.appendChild(li); }
+    item('Palavras lidas em 1 minuto', r.palavras + ' de ' + c.palavras.length);
+    item('Palavras simples (as 20 primeiras)', r.canonicas + ' de 20');
+    item('Palavras inventadas em 1 minuto', r.pseudo + ' de ' + c.pseudo.length);
+    item('Texto: palavras corretas por minuto', r.texto == null ? 'não se aplica' : String(r.texto));
+    item('Texto: precisão', r.precisao == null ? 'não se aplica' : Math.round(r.precisao * 100) + '%');
+    item('Compreensão', r.compreensao == null ? 'não se aplica' : r.compreensao + ' de ' + c.perguntas.length);
+    cd.appendChild(ul);
+    cd.appendChild(el('p', 'ajuda', 'Critérios: Pré-leitor 1 = nenhuma palavra; 2 = 1 a 4; 3 = 5 a 9; 4 = 10 a ' + (FLU_MIN_TEXTO - 1) + ' palavras (ou não leu o texto); Leitor fluente = texto com ' + FLU_FLUENTE_PPM + ' ou mais palavras corretas por minuto e ' + Math.round(FLU_FLUENTE_PREC * 100) + '% ou mais de precisão; os demais que leram o texto = Leitor iniciante.'));
+    box.appendChild(cd);
+    var ac = el('div', 'acoes');
+    var bs = el('button', 'btn btn-pri', 'Salvar resultado'), bd = el('button', 'btn btn-perigo', 'Descartar'); bs.type = bd.type = 'button';
+    ac.appendChild(bs); ac.appendChild(bd); box.appendChild(ac);
+    bd.onclick = function () { confirmar('Descartar esta aplicação?', 'Nada será salvo.', 'Descartar', function () { estado.fluEm = false; fluTurma(A.t); }); };
+    bs.onclick = function () {
+      bs.disabled = bd.disabled = true;
+      D.flu.salvar({ escola_id: A.t.escola_id, turma_id: A.t.id, aluno_id: A.a.id, caderno: A.cad.codigo, palavras: r.palavras, canonicas: r.canonicas, pseudo: r.pseudo,
+        texto: r.texto, precisao: r.precisao, compreensao: r.compreensao, perfil: r.perfil, aplicador_nome: estado.perfil.nome || estado.perfil.email || '',
+        detalhes: { marcas: A.marcas, tempos: A.tempos } }).then(function () {
+        estado.fluEm = false; aviso('Resultado salvo: ' + r.perfil + '.');
+        A.ult[A.a.id] = { perfil: r.perfil };
+        var idx = A.alunos.indexOf(A.a), prox = A.alunos.slice(idx + 1).filter(function (x) { return !A.ult[x.id]; })[0];
+        if (!prox) { fluTurma(A.t); return; }
+        modal('Próximo aluno', prox.numero + ' · ' + prox.nome + ' ainda não fez. Começar agora com o mesmo caderno?', [
+          ['Voltar à turma', '', function () { fecharModal(); fluTurma(A.t); }],
+          ['Começar', 'btn-pri', function () { fecharModal(); estado.fluApl = { t: A.t, a: prox, alunos: A.alunos, ult: A.ult, cad: A.cad, res: {}, marcas: {}, tempos: {} }; fluParte('palavras'); }]
+        ]);
+      }).catch(function (e) { falhou(e); bs.disabled = bd.disabled = false; });
+    };
+  }
+
+  // ---------- cadernos (gestão) ----------
+  function abrirCadernos() {
+    var box = $('tela-flu'); carregando(box); mostrar('tela-flu', 'Cadernos de leitura');
+    estado.voltarFlu = abrirFlu;
+    fluCadernos().then(function (cads) {
+      box.textContent = '';
+      var c = el('div', 'card'); c.appendChild(el('h2', null, 'Cadernos de leitura'));
+      c.appendChild(el('p', 'ajuda', 'Os cadernos do Lume já vêm prontos (1º e 2º ano, versões A e B). Você também pode criar cadernos próprios, por exemplo para outros anos. Abra "Ver e imprimir" para imprimir as páginas que o aluno lê.'));
+      var nv = el('button', 'btn btn-pri', '+ Novo caderno'); nv.type = 'button'; nv.style.marginTop = '10px'; nv.onclick = function () { editarCaderno(null); }; c.appendChild(nv);
+      box.appendChild(c);
+      var lc = el('div', 'card'), ul = el('ul', 'lista'); lc.appendChild(ul); box.appendChild(lc);
+      cads.forEach(function (k) {
+        var li = el('li'); var nm = el('span', 'nome', k.nome); nm.appendChild(el('small', null, k.codigo + (k.pronto ? ' · pronto do Lume' : ' · da escola'))); li.appendChild(nm);
+        var vi = el('button', 'btn btn-peq', 'Ver e imprimir'); vi.type = 'button'; vi.onclick = function () { verCaderno(k); }; li.appendChild(vi);
+        if (!k.pronto) { var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { editarCaderno(k); }; li.appendChild(ed); }
+        ul.appendChild(li);
+      });
+    }).catch(falhou);
+  }
+  function editarCaderno(k) {
+    var e = estado.perfil.escola, c = k ? k.c : { palavras: [], pseudo: [], titulo: '', texto: '', perguntas: [['', ''], ['', ''], ['', '']] };
+    estado.voltarFlu = abrirCadernos;
+    var box = $('tela-flu'); box.textContent = ''; mostrar('tela-flu', k ? 'Editar caderno' : 'Novo caderno');
+    var f = el('div', 'card form');
+    var cod = input('text', k ? k.codigo : ''), nome = input('text', k ? k.nome : ''), ano = input('number', k ? k.ano : 1); ano.min = 1; ano.max = 9; cod.placeholder = 'Ex.: ESC-3A';
+    var l = el('div', 'linha'); l.appendChild(campo('Código (vai na capa do caderno)', cod)); var ca = campo('Ano', ano); ca.style.flex = '0 0 90px'; l.appendChild(ca); f.appendChild(l);
+    f.appendChild(campo('Nome', nome));
+    var pal = el('textarea'); pal.rows = 6; pal.value = c.palavras.join(' ');
+    var pse = el('textarea'); pse.rows = 4; pse.value = c.pseudo.join(' ');
+    f.appendChild(campo('Parte 1 · Palavras (recomendado 60, separadas por espaço; as 20 primeiras com sílabas simples)', pal));
+    f.appendChild(campo('Parte 2 · Palavras inventadas (recomendado 40)', pse));
+    var tit = input('text', c.titulo), tex = el('textarea'); tex.rows = 7; tex.value = c.texto;
+    f.appendChild(campo('Parte 3 · Título do texto', tit)); f.appendChild(campo('Texto (um parágrafo por linha)', tex));
+    var pergs = [0, 1, 2].map(function (i) { var q = (c.perguntas || [])[i] || ['', '']; var a = input('text', q[0]), b = input('text', q[1]); f.appendChild(campo('Pergunta ' + (i + 1), a)); f.appendChild(campo('Resposta esperada ' + (i + 1), b)); return [a, b]; });
+    f.appendChild(el('p', 'ajuda', 'Use textos e palavras criados pela escola (não copie itens de avaliações oficiais).'));
+    box.appendChild(f);
+    var ac = el('div', 'acoes barra-salvar');
+    var sv = el('button', 'btn btn-pri', 'Salvar caderno'); sv.type = 'button';
+    sv.onclick = function () {
+      var lp = pal.value.toUpperCase().split(/[\s,;]+/).filter(Boolean), ls = pse.value.toUpperCase().split(/[\s,;]+/).filter(Boolean);
+      if (!cod.value.trim() || nome.value.trim().length < 3) { aviso('Preencha o código e o nome.', 'err'); return; }
+      if (lp.length < 20 || ls.length < 10 || tex.value.trim().split(/\s+/).length < 20) { aviso('O caderno precisa de pelo menos 20 palavras, 10 palavras inventadas e um texto com 20 palavras ou mais.', 'err'); return; }
+      var conteudo = { palavras: lp, pseudo: ls, titulo: tit.value.trim().toUpperCase(), texto: tex.value.trim().toUpperCase(),
+        perguntas: pergs.map(function (p) { return [p[0].value.trim(), p[1].value.trim()]; }).filter(function (p) { return p[0]; }) };
+      D.flu.salvarCaderno({ id: k && k.id, escola_id: e.id, codigo: cod.value.trim().toUpperCase(), nome: nome.value.trim(), ano: Number(ano.value) || 1, conteudo: conteudo })
+        .then(function () { aviso('Caderno salvo.'); abrirCadernos(); }).catch(falhou);
+    };
+    ac.appendChild(sv);
+    if (k) { var ap = el('button', 'btn btn-perigo', 'Apagar'); ap.type = 'button'; ap.onclick = function () { confirmar('Apagar o caderno ' + k.codigo + '?', 'Os resultados já salvos continuam.', 'Apagar', function () { D.flu.apagarCaderno(k.id).then(function () { aviso('Caderno apagado.'); abrirCadernos(); }).catch(falhou); }); }; ac.appendChild(ap); }
+    box.appendChild(ac);
+  }
+  function verCaderno(k) {
+    estado.voltarFlu = abrirCadernos;
+    var c = k.c, box = $('tela-flu'); box.textContent = ''; mostrar('tela-flu', k.codigo);
+    var bar = el('div', 'acoes nao-imprime'); var bp = el('button', 'btn btn-pri', '🖨️ Imprimir'); bp.type = 'button'; bp.onclick = function () { window.print(); }; bar.appendChild(bp);
+    bar.appendChild(el('p', 'ajuda', 'Imprima uma cópia por aplicador. O aluno lê no papel; você marca no celular.')); box.appendChild(bar);
+    function pagina(titulo) { var p = el('div', 'cad-pag'); p.appendChild(el('div', 'cad-cab', k.codigo + ' · ' + titulo)); box.appendChild(p); return p; }
+    var p0 = pagina('Capa'); p0.appendChild(el('div', 'cad-capa', k.nome)); p0.appendChild(el('div', 'cad-cod', k.codigo));
+    var p1 = pagina('Parte 1 · Palavras'); var g1 = el('div', 'cad-grade'); c.palavras.forEach(function (w) { g1.appendChild(el('span', null, w)); }); p1.appendChild(g1);
+    var p2 = pagina('Parte 2 · Palavras inventadas'); var g2 = el('div', 'cad-grade'); c.pseudo.forEach(function (w) { g2.appendChild(el('span', null, w)); }); p2.appendChild(g2);
+    var p3 = pagina('Parte 3 · Texto'); p3.appendChild(el('div', 'cad-tit', c.titulo)); String(c.texto).split('\n').forEach(function (l) { p3.appendChild(el('p', 'cad-tx', l)); });
+  }
+
+  // ---------- resumo da fluência na tela da turma (Monitoramento) ----------
+  function cardFluTurma(box, t, alunos) {
+    D.flu.resultados(t.escola_id).then(function (res) {
+      res = res.filter(function (r) { return r.turma_id === t.id; }); if (!res.length) return;
+      var ult = fluUltimos(res), cont = [0, 0, 0], feitos = 0;
+      alunos.filter(function (a) { return a.ativo; }).forEach(function (a) { if (ult[a.id]) { feitos++; cont[fluGrupo(ult[a.id].perfil)]++; } });
+      var c = el('div', 'card av'); c.appendChild(el('h3', null, '🎙️ Fluência leitora'));
+      c.appendChild(el('p', 'ajuda', feitos + ' de ' + alunos.filter(function (a) { return a.ativo; }).length + ' avaliados · ' + cont[0] + (cont[0] === 1 ? ' pré-leitor · ' : ' pré-leitores · ') + cont[1] + (cont[1] === 1 ? ' iniciante · ' : ' iniciantes · ') + cont[2] + (cont[2] === 1 ? ' fluente' : ' fluentes')));
+      c.appendChild(barraGrupos(cont));
+      var b = el('button', 'btn btn-peq', 'Abrir fluência da turma'); b.type = 'button'; b.onclick = function () { carregarTurmas().then(function () { fluTurma(t); }); }; c.appendChild(b);
+      var alvo = box.querySelector('details'); if (alvo) box.insertBefore(c, alvo); else box.appendChild(c);
+    }).catch(function () {});
+  }
+
+  /* ---------- administração ---------- */
+  var ABAS_ADMIN = [['escola', 'Escola'], ['turmas', 'Turmas'], ['alunos', 'Alunos'], ['pessoas', 'Pessoas'], ['grade', 'Grade']];
+  function abrirAdmin(aba) {
+    estado.abaAdmin = aba || estado.abaAdmin;
+    var box = $('tela-admin'); box.textContent = '';
+    var ch = el('div', 'chips'); ch.setAttribute('role', 'tablist');
+    ABAS_ADMIN.forEach(function (a) {
+      var b = el('button', null, a[1]); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', a[0] === estado.abaAdmin);
+      b.onclick = function () { abrirAdmin(a[0]); }; ch.appendChild(b);
+    });
+    box.appendChild(ch);
+    var corpo = el('div'); corpo.style.display = 'grid'; corpo.style.gap = '16px'; box.appendChild(corpo);
+    mostrar('tela-admin', 'Administração');
+    ({ escola: admEscola, turmas: admTurmas, alunos: admAlunos, pessoas: admPessoas, grade: admGrade })[estado.abaAdmin](corpo);
+  }
+
+  // Logo da escola: reduz para 256 px no aparelho antes de guardar
+  function reduzirImagem(arquivo) {
+    return new Promise(function (ok, erro) {
+      if (!/^image\//.test(arquivo.type)) { erro(new Error('Escolha uma imagem (PNG ou JPG).')); return; }
+      var r = new FileReader();
+      r.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var lado = 256, cv = document.createElement('canvas'); cv.width = lado; cv.height = lado;
+          var cx = cv.getContext('2d'), s = Math.min(img.width, img.height);
+          cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, lado, lado);
+          cx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, lado, lado);
+          ok(cv.toDataURL('image/jpeg', .85));
+        };
+        img.onerror = function () { erro(new Error('Não consegui abrir esta imagem.')); };
+        img.src = r.result;
+      };
+      r.readAsDataURL(arquivo);
+    });
+  }
+  function admEscola(box) {
+    var e = estado.perfil.escola, logo = e.logo || '';
+    var f = el('form', 'card form'); f.noValidate = true;
+    f.appendChild(el('h2', null, 'Dados da escola'));
+    var nome = input('text', e.nome), cid = input('text', e.cidade || ''), ano = input('number', e.ano_letivo); ano.min = 2024; ano.max = 2100;
+    f.appendChild(campo('Nome da escola (aparece no topo do app)', nome));
+    var l = el('div', 'linha'); l.appendChild(campo('Cidade', cid)); l.appendChild(campo('Ano letivo', ano)); f.appendChild(l);
+    var lg = el('div', 'linha'); lg.style.alignItems = 'center';
+    var prev = el('img', 'logo-prev'); prev.alt = 'Logo da escola'; if (logo) prev.src = logo; else prev.classList.add('hidden');
+    var arq = input('file'); arq.accept = 'image/*';
+    arq.onchange = function () { if (arq.files[0]) reduzirImagem(arq.files[0]).then(function (d) { logo = d; prev.src = d; prev.classList.remove('hidden'); }).catch(falhou); };
+    var tirar = el('button', 'btn btn-peq', 'Tirar logo'); tirar.type = 'button'; tirar.onclick = function () { logo = ''; prev.classList.add('hidden'); arq.value = ''; };
+    lg.appendChild(prev); var cl = campo('Logo da escola (opcional)', arq); lg.appendChild(cl); lg.appendChild(tirar); f.appendChild(lg);
+    var b = el('button', 'btn btn-pri', 'Salvar'); b.type = 'submit'; f.appendChild(b);
+    f.onsubmit = function (ev) {
+      ev.preventDefault();
+      if (nome.value.trim().length < 3) { aviso('Digite o nome da escola.', 'err'); return; }
+      b.disabled = true;
+      D.escolas.salvar({ id: e.id, nome: nome.value.trim(), cidade: cid.value.trim(), logo: logo, ano_letivo: Number(ano.value) || e.ano_letivo })
+        .then(function (x) { estado.perfil.escola = x; aviso('Dados da escola salvos.');
+          if (x.logo) { $('escola-mini').src = x.logo; $('escola-mini').classList.remove('hidden'); } else $('escola-mini').classList.add('hidden'); })
+        .catch(falhou).then(function () { b.disabled = false; });
+    };
+    box.appendChild(f);
+  }
+
+  // Ano/série com a etapa: valor "EF-5", "EM-1"
+  function seletorSerie(valor) {
+    var s = el('select');
+    [['Ensino Fundamental I', 'EF', 1, 5, 'º ano'], ['Ensino Fundamental II', 'EF', 6, 9, 'º ano'], ['Ensino Médio', 'EM', 1, 4, 'ª série']].forEach(function (g) {
+      var og = el('optgroup'); og.label = g[0];
+      for (var i = g[2]; i <= g[3]; i++) { var o = el('option', null, i + g[4]); o.value = g[1] + '-' + i; og.appendChild(o); }
+      s.appendChild(og);
+    });
+    if (valor) s.value = valor;
+    return s;
+  }
+  function lerSerie(sel) { var p = sel.value.split('-'); return { etapa: p[0], ano: Number(p[1]) }; }
+  function valorSerie(t) { return (t.etapa || 'EF') + '-' + t.ano; }
+  function seletorTurno(valor) { var s = el('select'); ['Manhã', 'Tarde', 'Integral', 'Noite'].forEach(function (t) { var o = el('option', null, t); o.value = t; s.appendChild(o); }); if (valor) s.value = valor; return s; }
+  function admTurmas(box) {
+    var e = estado.perfil.escola;
+    var f = el('form', 'card form'); f.noValidate = true;
+    f.appendChild(el('h2', null, 'Nova turma'));
+    var ano = seletorSerie(estado.ultimaSerie || 'EF-1'), letra = input('text'), turno = seletorTurno('Manhã'); letra.maxLength = 12; letra.placeholder = 'A';
+    var l = el('div', 'linha'); l.appendChild(campo('Ano / série', ano)); l.appendChild(campo('Nome da turma', letra)); l.appendChild(campo('Turno', turno));
+    var b = el('button', 'btn btn-pri', 'Adicionar'); b.type = 'submit'; l.appendChild(b); f.appendChild(l);
+    f.appendChild(el('p', 'ajuda', 'Serve para Fundamental I e II e Ensino Médio. O nome é livre (A, B, 1, Técnico…). Para criar várias de uma vez, separe por vírgula: A, B, C.'));
+    var lista = el('div', 'card'); lista.appendChild(el('h2', null, 'Turmas de ' + e.ano_letivo)); var ul = el('ul', 'lista'); lista.appendChild(ul);
+    function desenhar() {
+      carregarTurmas().then(function (ts) {
+        ul.textContent = '';
+        if (!ts.length) ul.appendChild(el('li', 'vazio', 'Nenhuma turma cadastrada ainda.'));
+        ts.forEach(function (t) {
+          var li = el('li'); li.setAttribute('data-ano', chaveSerie(t));
+          var tag = el('span', 'bloco-ano-selo', seloSerie(t)); li.appendChild(tag);
+          var nm = el('span', 'nome'); nm.appendChild(document.createTextNode('Turma ' + nomeTurma(t))); nm.appendChild(el('small', null, nomeEtapa(t) + ' · ' + t.turno + ' · ' + (estado.contagem[t.id] || 0) + ' alunos')); li.appendChild(nm);
+          var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { editarTurma(t, desenhar); };
+          var ap = el('button', 'btn btn-peq', 'Apagar'); ap.type = 'button';
+          ap.onclick = function () { confirmar('Apagar a turma ' + nomeTurma(t) + '?', 'Os alunos desta turma também serão apagados. Isso não pode ser desfeito.', 'Apagar', function () { D.turmas.apagar(t.id).then(function () { aviso('Turma apagada.'); desenhar(); }).catch(falhou); }); };
+          li.appendChild(ed); li.appendChild(ap); ul.appendChild(li);
+        });
+      }).catch(falhou);
+    }
+    f.onsubmit = function (ev) {
+      ev.preventDefault();
+      var letras = letra.value.split(/[,;]+/).map(function (x) { x = x.trim().replace(/\s+/g, ' '); return x.length <= 2 ? x.toUpperCase() : x; }).filter(Boolean);
+      if (!letras.length) { aviso('Digite a letra da turma.', 'err'); return; }
+      b.disabled = true;
+      var sr = lerSerie(ano); estado.ultimaSerie = ano.value;
+      letras.reduce(function (p, L) { return p.then(function () { return D.turmas.salvar({ escola_id: e.id, etapa: sr.etapa, ano: sr.ano, letra: L, turno: turno.value, ano_letivo: e.ano_letivo }); }); }, Promise.resolve())
+        .then(function () { letra.value = ''; aviso(letras.length > 1 ? letras.length + ' turmas criadas.' : 'Turma criada.'); desenhar(); })
+        .catch(function (x) { falhou(x); desenhar(); }).then(function () { b.disabled = false; });
+    };
+    box.appendChild(f); box.appendChild(lista); desenhar();
+  }
+  function editarTurma(t, depois) {
+    var corpo = el('div', 'form'), ano = seletorSerie(valorSerie(t)), letra = input('text', t.letra), turno = seletorTurno(t.turno);
+    letra.maxLength = 12;
+    corpo.appendChild(campo('Ano / série', ano)); corpo.appendChild(campo('Nome da turma', letra)); corpo.appendChild(campo('Turno', turno));
+    modal('Editar turma', corpo, [['Cancelar', '', fecharModal], ['Salvar', 'btn-pri', function () {
+      var sr = lerSerie(ano), nomeT = letra.value.trim().replace(/\s+/g, ' ');
+      if (!nomeT) { aviso('Digite o nome da turma.', 'err'); return; }
+      D.turmas.salvar({ id: t.id, escola_id: t.escola_id, etapa: sr.etapa, ano: sr.ano, letra: nomeT.length <= 2 ? nomeT.toUpperCase() : nomeT, turno: turno.value, ano_letivo: t.ano_letivo })
+        .then(function () { fecharModal(); aviso('Turma salva.'); depois(); }).catch(falhou);
+    }]]);
+  }
+
+  function admAlunos(box) {
+    var e = estado.perfil.escola;
+    carregarTurmas().then(function (ts) {
+      if (!ts.length) { var c = el('div', 'card'); c.appendChild(el('p', 'ajuda', 'Cadastre as turmas primeiro (aba Turmas).')); box.appendChild(c); return; }
+      var sel = el('select'); ts.forEach(function (t) { var o = el('option', null, 'Turma ' + nomeTurma(t)); o.value = t.id; sel.appendChild(o); });
+      if (estado.turma && ts.some(function (t) { return t.id === estado.turma.id; })) sel.value = estado.turma.id;
+      var topo = el('div', 'card form'); topo.appendChild(campo('Turma', sel));
+      var acoes = el('div', 'acoes');
+      var b1 = el('button', 'btn btn-pri', '+ Aluno'); b1.type = 'button';
+      var b2 = el('button', 'btn', '+ Vários de uma vez'); b2.type = 'button';
+      acoes.appendChild(b1); acoes.appendChild(b2); topo.appendChild(acoes);
+      topo.appendChild(el('p', 'ajuda', 'Guarde só o nome e o número de chamada. Não coloque RA, data de nascimento ou outros dados pessoais.'));
+      var lista = el('div', 'card'); var h = el('h2', null, 'Alunos'); lista.appendChild(h); var ul = el('ul', 'lista'); lista.appendChild(ul);
+      var atuais = [];
+      function turmaSel() { return ts.filter(function (t) { return t.id === sel.value; })[0]; }
+      function desenhar() {
+        estado.turma = turmaSel();
+        D.alunos.listar(sel.value).then(function (al) {
+          atuais = al; ul.textContent = '';
+          h.textContent = 'Alunos do ' + nomeTurma(estado.turma) + ' (' + al.filter(function (a) { return a.ativo; }).length + ' ativos)';
+          if (!al.length) ul.appendChild(el('li', 'vazio', 'Nenhum aluno nesta turma.'));
+          al.forEach(function (a) {
+            var li = el('li'); li.appendChild(el('span', 'n', a.numero));
+            var nm = el('span', 'nome' + (a.ativo ? '' : ' inativo'), a.nome); li.appendChild(nm);
+            if (!a.ativo) li.appendChild(el('span', 'etq off', 'Saiu'));
+            var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { editarAluno(a, desenhar); };
+            li.appendChild(ed); ul.appendChild(li);
+          });
+        }).catch(falhou);
+      }
+      function proximoNumero() { return atuais.reduce(function (m, a) { return Math.max(m, a.numero); }, 0) + 1; }
+      b1.onclick = function () { editarAluno({ escola_id: e.id, turma_id: sel.value, numero: proximoNumero(), nome: '', ativo: true }, desenhar); };
+      b2.onclick = function () {
+        var corpo = el('div', 'form'), t = el('textarea'); t.rows = 10; t.placeholder = 'Um nome por linha, na ordem da chamada';
+        corpo.appendChild(el('p', 'ajuda', 'Digite ou cole um nome por linha. Os números de chamada continuam a partir do ' + proximoNumero() + '.'));
+        corpo.appendChild(campo('Nomes', t));
+        modal('Vários alunos no ' + nomeTurma(turmaSel()), corpo, [['Cancelar', '', fecharModal], ['Adicionar', 'btn-pri', function () {
+          var nomes = t.value.split(/\r?\n/).map(function (x) { return x.replace(/^\s*\d+[\s.\-–)]*/, '').trim(); }).filter(function (x) { return x.length >= 2; });
+          if (!nomes.length) { aviso('Digite pelo menos um nome.', 'err'); return; }
+          var n = proximoNumero();
+          D.alunos.salvarVarios(nomes.map(function (x, i) { return { escola_id: e.id, turma_id: sel.value, numero: n + i, nome: x }; }))
+            .then(function () { fecharModal(); aviso(nomes.length + (nomes.length === 1 ? ' aluno adicionado.' : ' alunos adicionados.')); desenhar(); }).catch(falhou);
+        }]]);
+      };
+      sel.onchange = desenhar;
+      box.appendChild(topo); box.appendChild(lista); desenhar();
+    }).catch(falhou);
+  }
+  function editarAluno(a, depois) {
+    var corpo = el('div', 'form'), num = input('number', a.numero), nome = input('text', a.nome);
+    num.min = 1; num.max = 99;
+    var ativo = el('label'); ativo.style.display = 'flex'; ativo.style.gap = '8px'; ativo.style.alignItems = 'center';
+    var cb = input('checkbox'); cb.checked = a.ativo !== false; ativo.appendChild(cb); ativo.appendChild(document.createTextNode('Aluno ativo (desmarque se saiu da turma)'));
+    var l = el('div', 'linha'); var cn = campo('Nº', num); cn.style.flex = '0 0 80px'; l.appendChild(cn); l.appendChild(campo('Nome', nome));
+    corpo.appendChild(l); if (a.id) corpo.appendChild(ativo);
+    var botoes = [['Cancelar', '', fecharModal], ['Salvar', 'btn-pri', function () {
+      if (nome.value.trim().length < 2) { aviso('Digite o nome do aluno.', 'err'); return; }
+      D.alunos.salvar(Object.assign({}, a, { numero: Number(num.value) || a.numero, nome: nome.value.trim(), ativo: cb.checked }))
+        .then(function () { fecharModal(); aviso('Aluno salvo.'); depois(); }).catch(falhou);
+    }]];
+    if (a.id) botoes.splice(1, 0, ['Apagar', 'btn-perigo', function () {
+      confirmar('Apagar ' + a.nome + '?', 'Se o aluno só mudou de escola, prefira desmarcar "ativo": assim o histórico continua. Apagar não pode ser desfeito.', 'Apagar', function () {
+        D.alunos.apagar(a.id).then(function () { aviso('Aluno apagado.'); depois(); }).catch(falhou);
+      });
+    }]);
+    modal(a.id ? 'Editar aluno' : 'Novo aluno', corpo, botoes);
+  }
+
+  function marcasTurmas(ts, marcadas) {
+    var w = el('div', 'marcas');
+    ts.forEach(function (t) { var l = el('label'); var c = input('checkbox'); c.value = t.id; c.checked = marcadas.indexOf(t.id) !== -1; l.appendChild(c); l.appendChild(document.createTextNode(nomeTurma(t))); w.appendChild(l); });
+    w.valores = function () { return Array.prototype.filter.call(w.querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; }); };
+    return w;
+  }
+  function seletorPapel(v) { var s = el('select'); [['professor', 'Professor(a)'], ['gestor', 'Gestão (vê tudo e administra)']].forEach(function (p) { var o = el('option', null, p[1]); o.value = p[0]; s.appendChild(o); }); s.value = v || 'professor'; return s; }
+  function admPessoas(box) {
+    var e = estado.perfil.escola;
+    Promise.all([carregarTurmas(), D.perfis.listar(e.id), D.convites.listar(e.id), D.professorTurmas.listar(e.id)]).then(function (r) {
+      var ts = r[0], perfis = r[1], convites = r[2], pt = r[3];
+      // convidar
+      var f = el('form', 'card form'); f.noValidate = true;
+      f.appendChild(el('h2', null, 'Convidar pessoa'));
+      f.appendChild(el('p', 'ajuda', 'Cadastre o e-mail. Depois a pessoa abre o Lume, toca em "Criar conta" e usa esse mesmo e-mail: o acesso já vem com o papel e as turmas que você marcar.'));
+      var email = input('email'), nome = input('text'), papel = seletorPapel('professor'), marcas = marcasTurmas(ts, []);
+      var l = el('div', 'linha'); l.appendChild(campo('E-mail', email)); l.appendChild(campo('Nome', nome)); f.appendChild(l);
+      f.appendChild(campo('Papel', papel));
+      var ct = el('div', 'campo'); ct.appendChild(el('label', null, 'Turmas (para professores)')); ct.appendChild(ts.length ? marcas : el('p', 'ajuda', 'Cadastre as turmas primeiro.')); f.appendChild(ct);
+      var b = el('button', 'btn btn-pri', 'Criar convite'); b.type = 'submit'; f.appendChild(b);
+      f.onsubmit = function (ev) {
+        ev.preventDefault();
+        if (!/^\S+@\S+\.\S+$/.test(email.value.trim())) { aviso('Digite um e-mail válido.', 'err'); return; }
+        b.disabled = true;
+        D.convites.criar({ escola_id: e.id, email: email.value, nome: nome.value.trim(), papel: papel.value, turmas: papel.value === 'gestor' ? [] : marcas.valores() })
+          .then(function () { aviso('Convite criado. Avise a pessoa para criar a conta com ' + email.value.trim() + '.'); abrirAdmin('pessoas'); })
+          .catch(falhou).then(function () { b.disabled = false; });
+      };
+      box.appendChild(f);
+      // convites abertos
+      if (convites.length) {
+        var cc = el('div', 'card'); cc.appendChild(el('h2', null, 'Convites esperando a pessoa criar a conta'));
+        var ulc = el('ul', 'lista');
+        convites.forEach(function (c) {
+          var li = el('li'); var nm = el('span', 'nome', c.nome || c.email); nm.appendChild(el('small', null, c.email + ' · ' + (c.papel === 'gestor' ? 'Gestão' : 'Professor(a)'))); li.appendChild(nm);
+          var x = el('button', 'btn btn-peq', 'Cancelar'); x.type = 'button';
+          x.onclick = function () { D.convites.apagar(c.id).then(function () { aviso('Convite cancelado.'); abrirAdmin('pessoas'); }).catch(falhou); };
+          li.appendChild(x); ulc.appendChild(li);
+        });
+        cc.appendChild(ulc); box.appendChild(cc);
+      }
+      // quem já entra
+      var cp = el('div', 'card'); cp.appendChild(el('h2', null, 'Quem já usa o Lume nesta escola'));
+      var ulp = el('ul', 'lista');
+      perfis.forEach(function (p) {
+        var suas = pt.filter(function (x) { return x.perfil_id === p.id; }).map(function (x) { return x.turma_id; });
+        var nomesT = ts.filter(function (t) { return suas.indexOf(t.id) !== -1; }).map(nomeTurma);
+        var li = el('li'); var nm = el('span', 'nome' + (p.ativo ? '' : ' inativo'), p.nome || p.email);
+        nm.appendChild(el('small', null, p.email + (p.papel === 'professor' ? ' · ' + (nomesT.length ? nomesT.join(', ') : 'sem turmas') : '')));
+        li.appendChild(nm);
+        li.appendChild(el('span', 'etq' + (p.papel === 'gestor' ? ' gestor' : ''), p.papel === 'gestor' ? 'Gestão' : 'Professor'));
+        if (!p.ativo) li.appendChild(el('span', 'etq off', 'Bloqueado'));
+        var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { editarPessoa(p, ts, suas); };
+        li.appendChild(ed); ulp.appendChild(li);
+      });
+      cp.appendChild(ulp); box.appendChild(cp);
+    }).catch(falhou);
+  }
+  function editarPessoa(p, ts, suas) {
+    var eu = p.id === estado.perfil.id;
+    var corpo = el('div', 'form'), nome = input('text', p.nome), papel = seletorPapel(p.papel), marcas = marcasTurmas(ts, suas);
+    var ativo = el('label'); ativo.style.display = 'flex'; ativo.style.gap = '8px'; ativo.style.alignItems = 'center';
+    var cb = input('checkbox'); cb.checked = p.ativo; ativo.appendChild(cb); ativo.appendChild(document.createTextNode('Pode entrar no Lume'));
+    corpo.appendChild(el('p', 'ajuda', p.email));
+    corpo.appendChild(campo('Nome', nome));
+    if (!eu) { corpo.appendChild(campo('Papel', papel)); corpo.appendChild(ativo); }
+    var ct = el('div', 'campo'); ct.appendChild(el('label', null, 'Turmas')); ct.appendChild(marcas); corpo.appendChild(ct);
+    var botoes = [['Cancelar', '', fecharModal], ['Salvar', 'btn-pri', function () {
+      D.perfis.salvar({ id: p.id, nome: nome.value.trim(), papel: eu ? p.papel : papel.value, ativo: eu ? true : cb.checked })
+        .then(function () { return D.perfis.definirTurmas(p.id, p.escola_id, marcas.valores()); })
+        .then(function () { fecharModal(); aviso('Acesso salvo.'); if (eu) { estado.perfil.nome = nome.value.trim(); estado.perfil.turmas = marcas.valores(); } abrirAdmin('pessoas'); }).catch(falhou);
+    }]];
+    if (!eu) botoes.splice(1, 0, ['Remover', 'btn-perigo', function () {
+      confirmar('Remover o acesso de ' + (p.nome || p.email) + '?', 'A pessoa não consegue mais entrar nesta escola. Para só pausar, desmarque "Pode entrar no Lume".', 'Remover', function () {
+        D.perfis.apagar(p.id).then(function () { aviso('Acesso removido.'); abrirAdmin('pessoas'); }).catch(falhou);
+      });
+    }]);
+    modal(eu ? 'Seu acesso' : 'Editar acesso', corpo, botoes);
+  }
+
+  /* ---------- escolas (super admin) ---------- */
+  function abrirEscolas() {
+    var box = $('tela-escolas'); carregando(box); mostrar('tela-escolas', 'Escolas');
+    D.escolas.listar().then(function (es) {
+      box.textContent = '';
+      var f = el('form', 'card form'); f.noValidate = true; f.appendChild(el('h2', null, 'Nova escola'));
+      var nome = input('text'), cid = input('text'), email = input('email');
+      f.appendChild(campo('Nome da escola', nome));
+      var l = el('div', 'linha'); l.appendChild(campo('Cidade', cid)); l.appendChild(campo('E-mail de quem vai administrar (gestão)', email)); f.appendChild(l);
+      var b = el('button', 'btn btn-pri', 'Criar escola e convite'); b.type = 'submit'; f.appendChild(b);
+      f.onsubmit = function (ev) {
+        ev.preventDefault();
+        if (nome.value.trim().length < 3) { aviso('Digite o nome da escola.', 'err'); return; }
+        b.disabled = true;
+        D.escolas.criar({ nome: nome.value.trim(), cidade: cid.value.trim() }).then(function (x) {
+          if (email.value.trim()) return D.convites.criar({ escola_id: x.id, email: email.value, nome: '', papel: 'gestor', turmas: [] });
+        }).then(function () { aviso('Escola criada.'); abrirEscolas(); }).catch(falhou).then(function () { b.disabled = false; });
+      };
+      box.appendChild(f);
+      var c = el('div', 'card'); c.appendChild(el('h2', null, es.length + (es.length === 1 ? ' escola' : ' escolas')));
+      var ul = el('ul', 'lista');
+      es.forEach(function (x) {
+        var li = el('li'); var nm = el('span', 'nome', x.nome); nm.appendChild(el('small', null, (x.cidade || '—') + ' · ano letivo ' + x.ano_letivo)); li.appendChild(nm);
+        var cv = el('button', 'btn btn-peq', 'Convidar gestão'); cv.type = 'button';
+        cv.onclick = function () {
+          var i = input('email'); var corpo = el('div', 'form'); corpo.appendChild(campo('E-mail', i));
+          modal('Convidar gestão · ' + x.nome, corpo, [['Cancelar', '', fecharModal], ['Criar convite', 'btn-pri', function () {
+            D.convites.criar({ escola_id: x.id, email: i.value, nome: '', papel: 'gestor', turmas: [] }).then(function () { fecharModal(); aviso('Convite criado.'); }).catch(falhou);
+          }]]);
+        };
+        li.appendChild(cv); ul.appendChild(li);
+      });
+      c.appendChild(ul); box.appendChild(c);
+    }).catch(falhou);
+  }
+
+  /* ---------- início do app ---------- */
+  if (/nova-senha/.test(location.hash)) { mostrar('tela-nova-senha', 'Nova senha'); }
+  else iniciarSessao();
+  D.aoMudarSessao(function (ev) { if (ev === 'PASSWORD_RECOVERY') mostrar('tela-nova-senha', 'Nova senha'); });
+})();
+</script>
+</body>
+</html>
