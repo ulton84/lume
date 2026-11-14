@@ -372,6 +372,10 @@
   .imp-grupo { border-left: 4px solid var(--cor, var(--line)); padding: 8px 0 8px 12px; margin-top: 10px; display: grid; gap: 2px; }
   .imp-grupo small { color: var(--muted); } .imp-grupo p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
   .barra-salvar:empty { display: none; }
+  .desc-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .desc-links a { font-size: 13px; font-weight: 700; color: var(--brand-txt); text-decoration: none; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+  .desc-enc { display: grid; gap: 2px; padding: 4px 0; }
+  .desc-enc p { margin: 0; }
   .marca-linha { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -793,7 +797,12 @@
           var ac = el('div', 'acoes');
           if (R.turma.avaliados) { var vr = el('button', 'btn btn-pri btn-peq', '📊 Ver resultado'); vr.type = 'button'; vr.onclick = function () { abrirResultado(av, t); }; ac.appendChild(vr); }
           var podeLancar = ehGestor() || estado.perfil.turmas.indexOf(t.id) !== -1;
-          if (podeLancar && ehPct(av)) { var ir = el('button', 'btn btn-peq' + (R.turma.avaliados ? '' : ' btn-pri'), '＋ Importar resultados'); ir.type = 'button'; ir.onclick = function () { abrirImportResultados(av, t); }; ac.appendChild(ir); }
+          if (ehPct(av) && R.descImp && R.descImp.length) { var fr = descAgrupados(R.descImp).filter(function (d) { return C.faixaDe(av, d.pct) === 0; }).length; corpo.appendChild(el('p', 'ajuda', '📑 Descritores' + (R.descEscopo === 'serie' ? ' (da série)' : '') + ': ' + (fr ? fr + ' abaixo de ' + av.faixas.limites[0] + '%' : 'nenhum abaixo de ' + av.faixas.limites[0] + '%'))); }
+          if ((R.turma.avaliados || (R.descImp && R.descImp.length)) && ehPct(av) && !ac.querySelector('.btn-pri')) { var vr2 = el('button', 'btn btn-pri btn-peq', '📊 Ver resultado'); vr2.type = 'button'; vr2.onclick = function () { abrirResultado(av, t); }; ac.appendChild(vr2); }
+          if (podeLancar && ehPct(av)) {
+            var ir = el('button', 'btn btn-peq', '＋ Importar resultados'); ir.type = 'button'; ir.onclick = function () { abrirImportResultados(av, t); }; ac.appendChild(ir);
+            var idd = el('button', 'btn btn-peq', '＋ Importar por descritor'); idd.type = 'button'; idd.onclick = function () { abrirImportDescritores(av, t); }; ac.appendChild(idd);
+          }
           if (podeLancar && !ehPct(av)) {
             var lc = el('button', 'btn btn-peq', '✏️ Lançar respostas'); lc.type = 'button'; lc.onclick = function () { abrirLancamento(av, t); }; ac.appendChild(lc);
             var irr = el('button', 'btn btn-peq', '＋ Importar respostas'); irr.type = 'button'; irr.onclick = function () { abrirImportRespostas(av, t); }; ac.appendChild(irr);
@@ -1059,12 +1068,12 @@
       cab.appendChild(el('h2', null, av.nome));
       cab.appendChild(el('p', 'ajuda', 'Turma ' + nomeTurma(t) + ' · ' + R.turma.avaliados + ' de ' + R.turma.previstos + (ehPct(av) ? ' alunos com resultado importado' : ' alunos lançados') + (R.faltaram.length ? ' · sem resultado: ' + R.faltaram.length : '') + ' · faixas: abaixo de ' + av.faixas.limites[0] + '% ' + nomesFaixa(av)[0].toLowerCase() + ', abaixo de ' + av.faixas.limites[1] + '% ' + nomesFaixa(av)[1].toLowerCase() + '.'));
       box.appendChild(cab);
-      var abas = ehPct(av) ? [['res', 'Resumo'], ['alu', 'Alunos'], ['enc', 'Encaminhamentos']] : [['res', 'Resumo'], ['desc', 'Descritores'], ['alu', 'Alunos'], ['q', 'Questões'], ['enc', 'Encaminhamentos']];
+      var abas = ehPct(av) ? [['res', 'Resumo']].concat(R.descImp && R.descImp.length ? [['desc', 'Descritores']] : [], [['alu', 'Alunos'], ['enc', 'Encaminhamentos']]) : [['res', 'Resumo'], ['desc', 'Descritores'], ['alu', 'Alunos'], ['q', 'Questões'], ['enc', 'Encaminhamentos']];
       var ch = el('div', 'chips'); ch.setAttribute('role', 'tablist'); box.appendChild(ch);
       var area = el('div', 'area-res'); box.appendChild(area);
       function ir(id) {
         Array.prototype.forEach.call(ch.children, function (b) { b.setAttribute('aria-selected', b.dataset.id === id); });
-        area.textContent = ''; ({ res: resResumo, desc: resDescritores, alu: resAlunos, q: resQuestoes, enc: resEncaminhamentos })[id](area, av, R);
+        area.textContent = ''; ({ res: resResumo, desc: ehPct(av) ? resDescImportados : resDescritores, alu: resAlunos, q: resQuestoes, enc: resEncaminhamentos })[id](area, av, R);
       }
       abas.forEach(function (a) { var b = el('button', null, a[1]); b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.id = a[0]; b.onclick = function () { ir(a[0]); }; ch.appendChild(b); });
       ir('res');
@@ -1136,8 +1145,15 @@
   }
   function resEncaminhamentos(area, av, R) {
     area.appendChild(el('p', 'ajuda', R.tipo === 'percentual' ? 'Grupos sugeridos para reagrupamento em cada componente, a partir do % de acerto da plataforma. É um ponto de partida: ajuste com o que você conhece da turma.' : 'Grupos sugeridos para reagrupamento, com os códigos que cada grupo mais errou. É um ponto de partida: ajuste com o que você conhece da turma.'));
+    var fracos = R.tipo === 'percentual' && R.descImp && R.descImp.length ? descAgrupados(R.descImp) : [];
     R.comps.forEach(function (c) {
       var G = R.grupos[c], cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c)));
+      var fc = fracos.filter(function (d) { return d.comp === c && C.faixaDe(av, d.pct) < 2; }).slice(0, 3);
+      if (fc.length) {
+        var bf = el('div', 'grupo fx-borda-critical'); bf.appendChild(el('b', null, '📑 Descritores para retomar' + (R.descEscopo === 'serie' ? ' (resultado da série)' : '')));
+        fc.forEach(function (d) { var it = el('div', 'desc-enc'); it.appendChild(el('p', null, d.descritor + ' (' + pct(d.pct) + ')')); it.appendChild(linksDesc(d)); bf.appendChild(it); });
+        cc.appendChild(bf);
+      }
       [0, 1].forEach(function (f) {
         var gr = f === 0 ? G.abaixo : G.basico;
         var bl = el('div', 'grupo fx-borda-' + CLS_FAIXA[f]);
@@ -1948,9 +1964,17 @@
   function descAvaliacao(av) { return ehPct(av) ? ((av.componentes || []).length ? av.componentes.map(M.nomeComp).join(' · ') + ' · ' : '') + 'importada da plataforma' : C.componentes(av).map(M.nomeComp).join(' · ') + ' · ' + C.validas(av).length + ' questões'; }
   // resultado da turma, seja por questões (respostas) ou importado (% por componente)
   function obterResultado(av, t, alunos) {
-    if (ehPct(av)) return D.notas.daAvaliacao(av.id).then(function (ns) {
-      var daTurma = {}; ns.forEach(function (n) { if (n.turma_id === t.id) daTurma[n.aluno_id] = n.valores; });
-      return C.resultadoPct(av, alunos, daTurma, ns.map(function (n) { return n.valores; }));
+    if (ehPct(av)) return Promise.all([D.notas.daAvaliacao(av.id), D.descImp.listar(av.id)]).then(function (r) {
+      var ns = r[0], daTurma = {}; ns.forEach(function (n) { if (n.turma_id === t.id) daTurma[n.aluno_id] = n.valores; });
+      var R = C.resultadoPct(av, alunos, daTurma, ns.map(function (n) { return n.valores; }));
+      var dt = r[1].filter(function (d) { return d.escopo === t.id; })[0] || r[1].filter(function (d) { return d.escopo === 'serie'; })[0];
+      R.descImp = dt ? dt.itens : []; R.descEscopo = dt ? (dt.escopo === 'serie' ? 'serie' : 'turma') : '';
+      R.descImp.forEach(function (d) {
+        if (R.comps.indexOf(d.comp) !== -1) return;
+        R.comps.push(d.comp); R.turma.porComp[d.comp] = null; R.serie.porComp[d.comp] = null; R.turma.faixasComp[d.comp] = [0, 0, 0];
+        R.grupos[d.comp] = { abaixo: { alunos: [], frageis: [] }, basico: { alunos: [], frageis: [] }, monitores: [] };
+      });
+      return R;
     });
     return D.respostas.daAvaliacao(av.id).then(function (rs) {
       var daTurma = {}; rs.forEach(function (r) { if (r.turma_id === t.id) daTurma[r.aluno_id] = r.marcadas; });
@@ -2198,6 +2222,115 @@
           .catch(function (x) { falhou(x); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
       };
     }).catch(falhou);
+  }
+
+  /* =====================  Desempenho por descritor (arquivo da plataforma)  ===================== */
+  function urlSegura(u) { u = String(u || '').trim(); return /^https?:\/\/[^\s]+$/i.test(u) ? u : ''; }
+  function lerDescritores(abas) {
+    var I = window.LUME_IMPORTA, N = I.norm;
+    for (var a = 0; a < abas.length; a++) {
+      var L = abas[a].linhas;
+      for (var r = 0; r < Math.min(L.length, 30); r++) {
+        var c = {}; (L[r] || []).forEach(function (h, i) { var n = N(h).replace(/^\(?%\)?\s*/, '').replace(/\(%\)/, '').trim();
+          if (/^(DESCRITOR|HABILIDADE|DESCRICAO DA HABILIDADE|DESCRICAO)/.test(n)) c.desc = i; else if (/ACERTO|PERCENTUAL/.test(n)) c.pct = i;
+          else if (/^(DISCIPLINA|COMPONENTE|AREA)/.test(n)) c.disc = i; else if (/^AULA/.test(n)) c.aula = i; else if (/^(QUESTAO|ITEM)/.test(n)) c.q = i;
+          else if (/^(SERIE|TURMA|ANO)/.test(n)) c.serie = i; });
+        if (c.desc == null || c.pct == null) continue;
+        var itens = [], serieTxt = '';
+        for (var k = r + 1; k < L.length; k++) {
+          var l = L[k] || [], d = String(l[c.desc] || '').replace(/\s+/g, ' ').trim(), p = lerPct(l[c.pct]);
+          if (!d || p == null) continue;
+          if (c.serie != null && !serieTxt) serieTxt = String(l[c.serie] || '');
+          var disc = c.disc != null ? String(l[c.disc] || '').replace(/\s*-\s*\d+\s*$/, '').trim() : '';
+          itens.push({ comp: disc ? I.compDe(disc) : 'OUT', descritor: d, pct: p, aula: c.aula != null ? urlSegura(l[c.aula]) : '', questao: c.q != null ? urlSegura(l[c.q]) : '' });
+        }
+        // turma: coluna Série/Turma ou o quadro "Filtros aplicados" (NM_TURMA)
+        var filtros = ''; for (var f = 0; f < r; f++) filtros += ' ' + (L[f] || []).join(' ');
+        var mT = /NM_TURMA\s*(?:É|E|=)\s*([^\n\r]+)/i.exec(filtros);
+        var turma = I.interpretarTurma(mT ? mT[1] : serieTxt);
+        return { itens: itens, turma: turma, serieTxt: (mT ? mT[1] : serieTxt).trim() };
+      }
+    }
+    return null;
+  }
+  function abrirImportDescritores(av, t) {
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', 'Escolha o arquivo de resultados por questão exportado da plataforma (colunas como Descritor, (%) Acertos, Disciplina, Aula e Questão). Não tem dados de alunos.'));
+    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.htm,.html,.ods'; corpo.appendChild(campo('Arquivo', arq));
+    var st = el('p', 'ajuda'); corpo.appendChild(st);
+    arq.onchange = function () {
+      if (!arq.files[0]) return; st.textContent = 'Lendo o arquivo…'; var nomeArq = arq.files[0].name;
+      lerArquivo(arq.files[0]).then(function (abas) {
+        var r = lerDescritores(abas);
+        if (!r || !r.itens.length) throw new Error('Não encontrei as colunas "Descritor" e "(%) Acertos" neste arquivo.');
+        fecharModal(); telaImportDescritores(av, t, nomeArq, r);
+      }).catch(function (e) { st.textContent = ''; falhou(e); });
+    };
+    modal('＋ Importar desempenho por descritor', corpo, [['Cancelar', '', fecharModal]]);
+  }
+  function telaImportDescritores(av, t, nomeArq, r) {
+    var box = $('tela-lancar'); box.textContent = ''; mostrar('tela-lancar', 'Importar descritores'); estado.turma = t;
+    var mesmaTurma = r.turma && chaveT(r.turma) === chaveT(t);
+    var c = el('div', 'card form'); c.appendChild(el('h2', null, av.nome));
+    var comps = {}; r.itens.forEach(function (x) { comps[x.comp] = (comps[x.comp] || 0) + 1; });
+    c.appendChild(el('p', 'ajuda', nomeArq + ' · ' + r.itens.length + ' questões · ' + Object.keys(comps).map(function (k) { return M.nomeComp(k) + ' ' + comps[k]; }).join(' · ') + (r.serieTxt ? ' · arquivo de: ' + r.serieTxt : '') + '.'));
+    var op = el('div', 'form');
+    var rs = input('radio'), rt = input('radio'); rs.name = rt.name = 'escopo-desc';
+    var l1 = el('label', 'marca-linha'); l1.appendChild(rt); l1.appendChild(document.createTextNode(' Resultado só da turma ' + nomeTurma(t)));
+    var l2 = el('label', 'marca-linha'); l2.appendChild(rs); l2.appendChild(document.createTextNode(' Resultado do ' + rotSerie(t) + ' inteiro (vale para todas as turmas da série)'));
+    if (mesmaTurma || !ehGestor()) rt.checked = true; else rs.checked = true;
+    if (!ehGestor()) { rs.disabled = true; l2.style.opacity = '.5'; }
+    op.appendChild(el('small', 'sub', 'Este arquivo é de qual turma?'));
+    if (!r.turma) op.appendChild(el('p', 'ajuda', 'O arquivo não separa por turma (mostra só a série). Se for da série inteira, escolha a segunda opção.'));
+    op.appendChild(l1); op.appendChild(l2); c.appendChild(op); box.appendChild(c);
+    var prev = el('div', 'card'); prev.appendChild(el('h3', null, 'Os 5 descritores com menor acerto'));
+    var ul = el('ul', 'lista');
+    r.itens.slice().sort(function (a, b) { return a.pct - b.pct; }).slice(0, 5).forEach(function (x) { var li = el('li'); var nm = el('span', 'nome', x.descritor); nm.appendChild(el('small', null, M.nomeComp(x.comp))); li.appendChild(nm); li.appendChild(el('b', 'pct-al', pct(x.pct))); ul.appendChild(li); });
+    prev.appendChild(ul); box.appendChild(prev);
+    var barra = el('div', 'acoes barra-salvar');
+    var bi = el('button', 'btn btn-pri', 'Importar ' + r.itens.length + ' questões'); bi.type = 'button';
+    var bc = el('button', 'btn', 'Cancelar'); bc.type = 'button'; bc.onclick = function () { abrirTurma(t); };
+    barra.appendChild(bi); barra.appendChild(bc); box.appendChild(barra);
+    bi.onclick = function () {
+      bi.disabled = true;
+      D.descImp.salvar({ avaliacao_id: av.id, escola_id: t.escola_id, escopo: rs.checked ? 'serie' : t.id, itens: r.itens })
+        .then(function () { aviso('Desempenho por descritor importado.'); abrirTurma(t); })
+        .catch(function (e) { falhou(e); bi.disabled = false; });
+    };
+  }
+  // agrupa questões com o mesmo descritor (média do acerto, todos os links)
+  function descAgrupados(itens) {
+    var mapa = {}, lista = [];
+    itens.forEach(function (x) {
+      var k = x.comp + '|' + x.descritor.toLowerCase();
+      if (!mapa[k]) { mapa[k] = { comp: x.comp, descritor: x.descritor, soma: 0, n: 0, aulas: [], questoes: [] }; lista.push(mapa[k]); }
+      var d = mapa[k]; d.soma += x.pct; d.n++; if (x.aula && d.aulas.indexOf(x.aula) === -1) d.aulas.push(x.aula); if (x.questao && d.questoes.indexOf(x.questao) === -1) d.questoes.push(x.questao);
+    });
+    lista.forEach(function (d) { d.pct = d.soma / d.n; });
+    return lista.sort(function (a, b) { return a.pct - b.pct; });
+  }
+  function linksDesc(d) {
+    var w = el('div', 'desc-links');
+    d.aulas.forEach(function (u, i) { var a = el('a', null, '📄 Aula de apoio' + (d.aulas.length > 1 ? ' ' + (i + 1) : '')); a.href = u; a.target = '_blank'; a.rel = 'noopener'; w.appendChild(a); });
+    d.questoes.forEach(function (u, i) { var a = el('a', null, '❓ Questão' + (d.questoes.length > 1 ? ' ' + (i + 1) : '')); a.href = u; a.target = '_blank'; a.rel = 'noopener'; w.appendChild(a); });
+    return w;
+  }
+  function resDescImportados(area, av, R) {
+    var ds = descAgrupados(R.descImp || []);
+    area.appendChild(el('p', 'ajuda', (R.descEscopo === 'serie' ? 'Resultado do ' + rotSerie(estado.turma) + ' inteiro (o arquivo não separa por turma). ' : '') + 'Do mais crítico para o mais forte. Em vermelho: abaixo de ' + av.faixas.limites[0] + '%. Os links levam à aula de apoio e à questão da prova.'));
+    var comps = []; ds.forEach(function (d) { if (comps.indexOf(d.comp) === -1) comps.push(d.comp); });
+    comps.forEach(function (c) {
+      var cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c)));
+      ds.filter(function (d) { return d.comp === c; }).forEach(function (d) {
+        var f = C.faixaDe(av, d.pct), li = el('div', 'desc-li fx-borda-' + CLS_FAIXA[f]);
+        var tp = el('div', 'desc-topo'); tp.appendChild(el('p', null, d.descritor)); tp.appendChild(el('span', 'desc-pct fx-txt-' + CLS_FAIXA[f], pct(d.pct))); li.appendChild(tp);
+        var barra = el('div', 'mini-barra'); var s2 = el('span', 'fx-' + CLS_FAIXA[f]); s2.style.width = Math.round(d.pct * 100) + '%'; barra.appendChild(s2); li.appendChild(barra);
+        if (d.n > 1) li.appendChild(el('small', null, d.n + ' questões'));
+        li.appendChild(linksDesc(d));
+        cc.appendChild(li);
+      });
+      area.appendChild(cc);
+    });
   }
 
   /* ---------- administração ---------- */

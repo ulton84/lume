@@ -123,6 +123,10 @@
       },
       apagarTurma: function (av, turma) { return sb.from('notas').delete().eq('avaliacao_id', av).eq('turma_id', turma).then(ok); }
     };
+    D.descImp = {
+      listar: function (av) { return sb.from('desc_importados').select('escopo,itens').eq('avaliacao_id', av).then(ok); },
+      salvar: function (d) { return sb.from('desc_importados').upsert({ avaliacao_id: d.avaliacao_id, escola_id: d.escola_id, escopo: d.escopo, itens: d.itens, atualizado_em: new Date().toISOString() }).then(ok); }
+    };
     D.horarios = {
       listar: function (escola) { return sb.from('horarios').select('*').eq('escola_id', escola).order('turno').order('aula').then(ok); },
       salvarTurno: function (escola, turno, lista) {
@@ -170,12 +174,12 @@
   function motorDemo() {
     var CH = 'lume-escolas-demo', CS = 'lume-escolas-demo-sessao';
     function uid() { return 'x' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
-    function ler() { try { var v = JSON.parse(localStorage.getItem(CH)); if (v && v.versao === 6) return v; } catch (e) {} return semente(); }
+    function ler() { try { var v = JSON.parse(localStorage.getItem(CH)); if (v && v.versao === 7) return v; } catch (e) {} return semente(); }
     function gravar(b) { try { localStorage.setItem(CH, JSON.stringify(b)); } catch (e) {} }
     function sessao() { try { return localStorage.getItem(CS) || ''; } catch (e) { return ''; } }
     function semente() {
       var ano = new Date().getFullYear(), esc = { id: 'esc1', nome: 'Escola de Demonstração', cidade: 'São Paulo', logo: '', ano_letivo: ano };
-      var b = { versao: 6, escolas: [esc], contas: [], perfis: [], convites: [], turmas: [], professor_turmas: [], alunos: [], superadmins: ['super@demo.lume'], avaliacoes: [], respostas: [], horarios: [], grade: [], apoios: [], flu_cadernos: [], flu_resultados: [], notas: [] };
+      var b = { versao: 7, escolas: [esc], contas: [], perfis: [], convites: [], turmas: [], professor_turmas: [], alunos: [], superadmins: ['super@demo.lume'], avaliacoes: [], respostas: [], horarios: [], grade: [], apoios: [], flu_cadernos: [], flu_resultados: [], notas: [], desc_importados: [] };
       [['gestor@demo.lume', 'Gestão Demonstração', 'gestor'], ['prof@demo.lume', 'Profª Ana (exemplo)', 'professor'], ['super@demo.lume', '', null]].forEach(function (u) {
         var id = uid(); b.contas.push({ id: id, email: u[0], senha: 'demo123' });
         if (u[2]) b.perfis.push({ id: id, escola_id: esc.id, nome: u[1], email: u[0], papel: u[2], ativo: true });
@@ -348,6 +352,14 @@
         });
       }); },
       apagarTurma: function (av, turma) { return mudar(function (b) { b.notas = b.notas.filter(function (x) { return !(x.avaliacao_id === av && x.turma_id === turma); }); }); }
+    };
+    D.descImp = {
+      listar: function (av) { return espera(ler().desc_importados.filter(function (d) { return d.avaliacao_id === av; }).map(function (d) { return { escopo: d.escopo, itens: d.itens }; })); },
+      salvar: function (d) { return mudar(function (b) {
+        if (!podeEscola(b, d.escola_id) && !(d.escopo !== 'serie' && douAula(b, d.escopo))) throw new Error('Você não tem permissão para fazer isso.');
+        b.desc_importados = b.desc_importados.filter(function (x) { return !(x.avaliacao_id === d.avaliacao_id && x.escopo === d.escopo); });
+        b.desc_importados.push({ avaliacao_id: d.avaliacao_id, escola_id: d.escola_id, escopo: d.escopo, itens: d.itens });
+      }); }
     };
     D.horarios = {
       listar: function (escola) { return espera(ler().horarios.filter(function (h) { return h.escola_id === escola; }).sort(function (a, b) { return a.turno.localeCompare(b.turno) || a.aula - b.aula; })); },
