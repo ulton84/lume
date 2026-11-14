@@ -137,6 +137,10 @@
       salvar: function (g) {
         if (!g.componente && !g.professor_id && !g.professor_nome) return sb.from('grade').delete().eq('turma_id', g.turma_id).eq('dia', g.dia).eq('aula', g.aula).then(ok);
         return sb.from('grade').upsert({ escola_id: g.escola_id, turma_id: g.turma_id, dia: g.dia, aula: g.aula, componente: g.componente || '', professor_id: g.professor_id || null, professor_nome: g.professor_nome || '' }, { onConflict: 'turma_id,dia,aula' }).then(ok);
+      },
+      salvarVarios: function (lista) {
+        if (!lista.length) return Promise.resolve([]);
+        return sb.from('grade').upsert(lista.map(function (g) { return { escola_id: g.escola_id, turma_id: g.turma_id, dia: g.dia, aula: g.aula, componente: g.componente || '', professor_id: g.professor_id || null, professor_nome: g.professor_nome || '' }; }), { onConflict: 'turma_id,dia,aula' }).then(ok);
       }
     };
     D.apoios = {
@@ -355,6 +359,13 @@
         exigir(b, g.escola_id);
         b.grade = b.grade.filter(function (x) { return !(x.turma_id === g.turma_id && x.dia === g.dia && x.aula === g.aula); });
         if (g.componente || g.professor_id || g.professor_nome) b.grade.push({ id: uid(), escola_id: g.escola_id, turma_id: g.turma_id, dia: g.dia, aula: g.aula, componente: g.componente || '', professor_id: g.professor_id || null, professor_nome: g.professor_nome || '' });
+      }); },
+      salvarVarios: function (lista) { return mudar(function (b) {
+        lista.forEach(function (g) {
+          exigir(b, g.escola_id);
+          b.grade = b.grade.filter(function (x) { return !(x.turma_id === g.turma_id && x.dia === g.dia && x.aula === g.aula); });
+          b.grade.push({ id: uid(), escola_id: g.escola_id, turma_id: g.turma_id, dia: g.dia, aula: g.aula, componente: g.componente || '', professor_id: g.professor_id || null, professor_nome: g.professor_nome || '' });
+        });
       }); }
     };
     D.apoios = {

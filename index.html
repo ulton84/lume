@@ -1178,7 +1178,11 @@
     var e = estado.perfil.escola;
     Promise.all([carregarTurmas(), D.horarios.listar(e.id), D.grade.listar(e.id), D.perfis.listar(e.id)]).then(function (r) {
       var ts = r[0], hs = r[1], grade = r[2], perfis = r[3].filter(function (p) { return p.ativo; });
-      if (!ts.length) { var c0 = el('div', 'card'); c0.appendChild(el('p', 'ajuda', 'Cadastre as turmas primeiro (aba Turmas).')); box.appendChild(c0); return; }
+      var ci = el('div', 'card'); ci.appendChild(el('h2', null, 'Importar a grade'));
+      ci.appendChild(el('p', 'ajuda', 'Já tem a grade numa planilha? Importe e o app preenche os horários, as aulas e os professores de cada turma (e cria as turmas que faltarem).'));
+      var bIg = el('button', 'btn btn-pri', '＋ Importar grade (Excel/CSV)'); bIg.type = 'button'; bIg.style.marginTop = '10px'; bIg.onclick = abrirImportGrade; ci.appendChild(bIg);
+      box.appendChild(ci);
+      if (!ts.length) { var c0 = el('div', 'card'); c0.appendChild(el('p', 'ajuda', 'Ou cadastre as turmas na aba Turmas e monte a grade aqui, aula por aula.')); box.appendChild(c0); return; }
       // horários por turno
       var ch = el('div', 'card form'); ch.appendChild(el('h2', null, 'Horários das aulas'));
       ch.appendChild(el('p', 'ajuda', 'Para cada turno, quantas aulas há por dia e o horário de cada uma.'));
@@ -2086,6 +2090,112 @@
           aviso(n + (n === 1 ? ' resultado importado' : ' resultados importados') + (faltam.length ? ' e ' + faltam.length + (faltam.length === 1 ? ' aluno cadastrado.' : ' alunos cadastrados.') : '.'));
           abrirTurma(t);
         }).catch(function (e) { falhou(e); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
+      };
+    }).catch(falhou);
+  }
+
+  /* =====================  Importar grade horária  ===================== */
+  function baixarModeloGrade() {
+    var csv = 'Turma;Dia;Aula;Horário;Componente;Professor\n5º A;Segunda;1ª;07:00 - 07:50;Português;Nome da professora\n5º A;Segunda;2ª;07:50 - 08:40;Matemática;Nome da professora\n6º B;Terça;1ª;07:00 - 07:50;Inglês;Nome do professor\n';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = 'modelo-grade-lume.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function abrirImportGrade() {
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', 'Escolha a planilha da grade horária (Excel ou CSV). O app entende três jeitos de montar a grade:'));
+    var ul = el('ul'); ul.style.margin = '0'; ul.style.paddingLeft = '18px';
+    ['Turmas nas colunas e as aulas de cada dia nas linhas (pode ter a linha "Professores" com o titular de cada turma e linhas com os especialistas, como Arte e Ed. Física).',
+     'Uma linha por aula: Turma, Dia, Aula, Horário, Componente, Professor (baixe o modelo abaixo).',
+     'Uma aba por turma, com os dias da semana nas colunas e as aulas nas linhas.'].forEach(function (t) { ul.appendChild(el('li', 'ajuda', t)); });
+    corpo.appendChild(ul);
+    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.ods,.htm,.html'; corpo.appendChild(campo('Planilha da grade', arq));
+    var bm = el('button', 'btn-link', 'Baixar modelo (uma linha por aula)'); bm.type = 'button'; bm.onclick = baixarModeloGrade; corpo.appendChild(bm);
+    var st = el('p', 'ajuda'); corpo.appendChild(st);
+    arq.onchange = function () {
+      if (!arq.files[0]) return; st.textContent = 'Lendo a planilha…'; var nomeArq = arq.files[0].name;
+      lerArquivo(arq.files[0]).then(function (abas) {
+        var g = window.LUME_IMPORTA.lerGrade(abas);
+        if (!g.itens.length) throw new Error('Não reconheci a grade nesta planilha. Confira se as turmas aparecem como "5º A" e as aulas como "1ª", "2ª"… ou use o modelo.');
+        fecharModal(); telaImportGrade(nomeArq, g);
+      }).catch(function (e) { st.textContent = ''; falhou(e); });
+    };
+    modal('＋ Importar grade horária', corpo, [['Cancelar', '', fecharModal]]);
+  }
+  function telaImportGrade(nomeArq, g) {
+    var e = estado.perfil.escola, N = window.LUME_IMPORTA.norm;
+    var box = $('tela-admin'); carregando(box); mostrar('tela-admin', 'Importar grade');
+    Promise.all([carregarTurmas(), D.perfis.listar(e.id)]).then(function (r) {
+      var ts = r[0], perfis = r[1].filter(function (p) { return p.ativo; });
+      var existentes = {}; ts.forEach(function (t) { existentes[chaveT(t)] = t; });
+      function acharPerfil(nome) {
+        var n = N(nome); if (!n) return null;
+        return perfis.filter(function (p) { var pn = N(p.nome || ''); return pn && (pn === n || pn.split(' ')[0] === n.split(' ')[0] && (pn.indexOf(n) === 0 || n.indexOf(pn) === 0) || pn.split(' ').filter(function (w) { return w.length > 2; }).indexOf(n) !== -1); })[0] || null;
+      }
+      var porT = {}, ordem = [];
+      g.itens.forEach(function (x) { var k = chaveT(x.turma); if (!porT[k]) { porT[k] = { turma: x.turma, itens: [] }; ordem.push(k); } porT[k].itens.push(x); });
+      var profs = {}; g.itens.forEach(function (x) { if (x.prof) profs[x.prof] = acharPerfil(x.prof); });
+      var nomesProf = Object.keys(profs), ligados = nomesProf.filter(function (n) { return profs[n]; });
+      box.textContent = '';
+      var c = el('div', 'card'); c.appendChild(el('h2', null, 'Grade horária'));
+      c.appendChild(el('p', 'ajuda', nomeArq + ' · formato: ' + g.formato + ' · ' + g.itens.length + ' aulas em ' + ordem.length + (ordem.length === 1 ? ' turma' : ' turmas') + '.'));
+      c.appendChild(el('p', 'ajuda', nomesProf.length ? ligados.length + ' de ' + nomesProf.length + ' professores foram ligados a quem já tem acesso ao app (eles verão os próprios apoios). Os outros ficam com o nome escrito.' : 'A planilha não traz o nome dos professores.'));
+      box.appendChild(c);
+      var cp = el('div', 'card'); cp.appendChild(el('h3', null, 'Turmas'));
+      var novas = 0;
+      ordem.forEach(function (k) {
+        var gr = porT[k], ex = existentes[k]; if (!ex) novas++;
+        var d = el('div', 'imp-grupo'); d.setAttribute('data-ano', chaveSerie(gr.turma));
+        var tp = el('div', 'desc-topo'); tp.appendChild(el('b', null, 'Turma ' + nomeTurma(gr.turma) + (gr.turma.turno ? ' · ' + gr.turma.turno : ''))); tp.appendChild(el('span', 'etq' + (ex ? '' : ' gestor'), ex ? 'Já existe' : 'Nova turma')); d.appendChild(tp);
+        var dias = {}; gr.itens.forEach(function (x) { dias[x.dia] = (dias[x.dia] || 0) + 1; });
+        d.appendChild(el('small', null, gr.itens.length + ' aulas · ' + Object.keys(dias).map(function (k2) { return DIAS_C[k2] + ' ' + dias[k2]; }).join(' · ')));
+        var seg = gr.itens.filter(function (x) { return x.dia === 1; }).sort(function (a, b) { return a.aula - b.aula; });
+        d.appendChild(el('p', null, 'Segunda: ' + (seg.length ? seg.map(function (x) { return x.aula + 'ª ' + M.nomeComp(x.comp) + (x.prof ? ' (' + x.prof.split(' ')[0] + ')' : ''); }).join(' · ') : '—')));
+        cp.appendChild(d);
+      });
+      box.appendChild(cp);
+      var subst = input('checkbox'); subst.checked = true;
+      var lb = el('label', 'marca-linha'); lb.appendChild(subst); lb.appendChild(document.createTextNode(' Substituir as aulas que já estavam cadastradas nessas turmas (nos mesmos dias e horários)'));
+      c.appendChild(lb);
+      var barra = el('div', 'acoes barra-salvar');
+      var bi = el('button', 'btn btn-pri', 'Importar ' + g.itens.length + ' aulas' + (novas ? ' e criar ' + novas + (novas === 1 ? ' turma' : ' turmas') : '')); bi.type = 'button';
+      var bc = el('button', 'btn', 'Cancelar'); bc.type = 'button'; bc.onclick = function () { abrirAdmin('grade'); };
+      barra.appendChild(bi); barra.appendChild(bc); box.appendChild(barra);
+      bi.onclick = function () {
+        bi.disabled = true; bi.textContent = 'Importando…';
+        D.grade.listar(e.id).then(function (atual) {
+          var ocupado = {}; atual.forEach(function (x) { ocupado[x.turma_id + '|' + x.dia + '|' + x.aula] = true; });
+          var horarios = {};
+          return ordem.reduce(function (p, k) {
+            return p.then(function () {
+              var gr = porT[k], ex = existentes[k];
+              var pt = ex ? Promise.resolve(ex) : D.turmas.salvar({ escola_id: e.id, etapa: gr.turma.etapa, ano: gr.turma.ano, letra: gr.turma.letra, turno: gr.turma.turno || 'Manhã', ano_letivo: e.ano_letivo });
+              return pt.then(function (t) {
+                var lista = [];
+                gr.itens.forEach(function (x) {
+                  var hk = t.turno + '|' + x.aula; if (!horarios[hk] || (!horarios[hk].inicio && x.inicio)) horarios[hk] = { turno: t.turno, aula: x.aula, inicio: x.inicio || '', fim: x.fim || '' };
+                  if (!subst.checked && ocupado[t.id + '|' + x.dia + '|' + x.aula]) return;
+                  var pf = x.prof ? profs[x.prof] : null;
+                  lista.push({ escola_id: e.id, turma_id: t.id, dia: x.dia, aula: x.aula, componente: x.comp, professor_id: pf ? pf.id : null, professor_nome: pf ? '' : x.prof });
+                });
+                return D.grade.salvarVarios(lista);
+              });
+            });
+          }, Promise.resolve()).then(function () {
+            // horários: o que veio na planilha substitui; aulas sem horário na planilha mantêm o que já havia
+            return D.horarios.listar(e.id).then(function (hs) {
+              var porTurno = {};
+              Object.keys(horarios).forEach(function (k) { var h = horarios[k]; (porTurno[h.turno] = porTurno[h.turno] || []).push(h); });
+              return Object.keys(porTurno).reduce(function (p, turno) {
+                return p.then(function () {
+                  var ja = hs.filter(function (h) { return h.turno === turno; }), mapa = {};
+                  ja.forEach(function (h) { mapa[h.aula] = h; }); porTurno[turno].forEach(function (h) { if (!mapa[h.aula] || h.inicio) mapa[h.aula] = h; });
+                  return D.horarios.salvarTurno(e.id, turno, Object.keys(mapa).map(function (a) { return mapa[a]; }).sort(function (a, b) { return a.aula - b.aula; }));
+                });
+              }, Promise.resolve());
+            });
+          });
+        }).then(function () { aviso('Grade importada: ' + g.itens.length + ' aulas.'); abrirAdmin('grade'); })
+          .catch(function (x) { falhou(x); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
       };
     }).catch(falhou);
   }
