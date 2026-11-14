@@ -5,7 +5,7 @@
   var COMPONENTES = [
     ['LP', 'Língua Portuguesa'], ['MAT', 'Matemática'], ['CIE', 'Ciências'], ['HIS', 'História'], ['GEO', 'Geografia'],
     ['ING', 'Inglês'], ['ART', 'Arte'], ['EDF', 'Educação Física'], ['BIO', 'Biologia'], ['FIS', 'Física'], ['QUI', 'Química'],
-    ['FIL', 'Filosofia'], ['SOC', 'Sociologia'], ['OUT', 'Outro']
+    ['FIL', 'Filosofia'], ['SOC', 'Sociologia'], ['FIN', 'Educação Financeira'], ['TEC', 'Tecnologia'], ['RED', 'Redação'], ['OUT', 'Outro']
   ];
 
   var SAEB_LP_5 = {
@@ -136,6 +136,8 @@
       serie: 'EF-5', comps: [['LP', 13], ['MAT', 13]], faixas: FAIXAS_SAEB, descritores: {} },
     { id: 'alfa', nome: 'Sarespinho / alfabetização', desc: 'Faixas de alfabetização: Intervenção (abaixo de 60%), Em desenvolvimento (60–79%) e Consolidada (80% ou mais).',
       serie: 'EF-2', comps: [['LP', 15], ['MAT', 15]], faixas: FAIXAS_ALFA, descritores: {} },
+    { id: 'plataforma', tipo: 'percentual', nome: 'Importada da plataforma (% por componente)', desc: 'Para provas corrigidas pela plataforma da SEDUC (ex.: Prova Paulista): você importa o arquivo da turma com o % de acerto de cada aluno em cada componente.',
+      serie: 'EF-5', comps: [], faixas: FAIXAS_SAEB, descritores: {} },
     { id: 'branco', nome: 'Em branco', desc: 'Você escolhe componentes, número de questões, gabarito, códigos e faixas.',
       serie: 'EF-5', comps: [['LP', 10]], faixas: FAIXAS_SAEB, descritores: {} }
   ];

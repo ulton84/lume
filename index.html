@@ -774,28 +774,31 @@
       minhas.forEach(function (av) {
         var c = el('div', 'card av'); g.appendChild(c);
         var tp = el('div', 'av-topo'); tp.appendChild(el('h3', null, av.nome));
-        tp.appendChild(el('small', null, [dataBr(av.data), C.componentes(av).map(M.nomeComp).join(' · '), C.validas(av).length + ' questões'].filter(Boolean).join(' · ')));
+        tp.appendChild(el('small', null, [dataBr(av.data), descAvaliacao(av)].filter(Boolean).join(' · ')));
         c.appendChild(tp);
         var corpo = el('div', 'vazio', 'Calculando…'); c.appendChild(corpo);
-        D.respostas.daAvaliacao(av.id).then(function (rs) {
-          var daTurma = {}; rs.forEach(function (r) { if (r.turma_id === t.id) daTurma[r.aluno_id] = r.marcadas; });
-          var R = C.resultadoTurma(av, alunos, daTurma, rs.map(function (r) { return r.marcadas; }));
+        obterResultado(av, t, alunos).then(function (R) {
           corpo.className = ''; corpo.textContent = '';
           var nums = el('div', 'nums');
-          [['Turma', pct(R.turma.media)], ['Série na escola', pct(R.serie.media)], ['Lançados', R.turma.avaliados + ' de ' + R.turma.previstos]].forEach(function (k) {
+          [['Turma', pct(R.turma.media)], ['Série na escola', pct(R.serie.media)], [ehPct(av) ? 'Importados' : 'Lançados', R.turma.avaliados + ' de ' + R.turma.previstos]].forEach(function (k) {
             var d = el('div'); d.appendChild(el('small', null, k[0])); d.appendChild(el('b', null, k[1])); nums.appendChild(d);
           });
           corpo.appendChild(nums);
           if (R.turma.avaliados) {
             corpo.appendChild(barraFaixas(av, R.turma.faixas));
-            var def = R.porCodigo.filter(function (d) { return d.faixa === 0; });
-            corpo.appendChild(el('p', 'ajuda', def.length ? '▼ ' + def.length + (def.length === 1 ? ' descritor/habilidade em defasagem' : ' descritores/habilidades em defasagem') : '✓ Nenhum descritor abaixo de ' + av.faixas.limites[0] + '%'));
-          } else corpo.appendChild(el('p', 'ajuda', 'Nenhuma resposta lançada nesta turma.'));
+            if (ehPct(av)) { var abx = R.turma.faixas[0]; corpo.appendChild(el('p', 'ajuda', abx ? '▼ ' + abx + (abx === 1 ? ' aluno' : ' alunos') + ' abaixo de ' + av.faixas.limites[0] + '% no geral' : '✓ Nenhum aluno abaixo de ' + av.faixas.limites[0] + '% no geral')); }
+            else { var def = R.porCodigo.filter(function (d) { return d.faixa === 0; });
+            corpo.appendChild(el('p', 'ajuda', def.length ? '▼ ' + def.length + (def.length === 1 ? ' descritor/habilidade em defasagem' : ' descritores/habilidades em defasagem') : '✓ Nenhum descritor abaixo de ' + av.faixas.limites[0] + '%')); }
+          } else corpo.appendChild(el('p', 'ajuda', ehPct(av) ? 'Nenhum resultado importado para esta turma. Toque em "＋ Importar resultados".' : 'Nenhuma resposta lançada nesta turma.'));
           var ac = el('div', 'acoes');
           if (R.turma.avaliados) { var vr = el('button', 'btn btn-pri btn-peq', '📊 Ver resultado'); vr.type = 'button'; vr.onclick = function () { abrirResultado(av, t); }; ac.appendChild(vr); }
           var podeLancar = ehGestor() || estado.perfil.turmas.indexOf(t.id) !== -1;
-          if (podeLancar) { var lc = el('button', 'btn btn-peq', '✏️ Lançar respostas'); lc.type = 'button'; lc.onclick = function () { abrirLancamento(av, t); }; ac.appendChild(lc); }
-          if (ehGestor()) { var ed = el('button', 'btn btn-peq', 'Editar prova'); ed.type = 'button'; ed.onclick = function () { abrirEditor(av, t); }; ac.appendChild(ed); }
+          if (podeLancar && ehPct(av)) { var ir = el('button', 'btn btn-peq' + (R.turma.avaliados ? '' : ' btn-pri'), '＋ Importar resultados'); ir.type = 'button'; ir.onclick = function () { abrirImportResultados(av, t); }; ac.appendChild(ir); }
+          if (podeLancar && !ehPct(av)) {
+            var lc = el('button', 'btn btn-peq', '✏️ Lançar respostas'); lc.type = 'button'; lc.onclick = function () { abrirLancamento(av, t); }; ac.appendChild(lc);
+            var irr = el('button', 'btn btn-peq', '＋ Importar respostas'); irr.type = 'button'; irr.onclick = function () { abrirImportRespostas(av, t); }; ac.appendChild(irr);
+          }
+          if (ehGestor()) { var ed = el('button', 'btn btn-peq', ehPct(av) ? 'Editar' : 'Editar prova'); ed.type = 'button'; ed.onclick = function () { abrirEditor(av, t); }; ac.appendChild(ed); }
           corpo.appendChild(ac);
         }).catch(function (e) { corpo.textContent = 'Não foi possível calcular: ' + e.message; });
       });
@@ -813,7 +816,7 @@
         var qs = [];
         m.comps.forEach(function (c) { for (var i = 0; i < c[1]; i++) qs.push({ n: qs.length + 1, comp: c[0], gab: '', cod: '' }); });
         var s = t ? { etapa: t.etapa || 'EF', ano: t.ano } : { etapa: m.serie.split('-')[0], ano: Number(m.serie.split('-')[1]) };
-        abrirEditor({ nome: m.id === 'branco' ? '' : m.nome.replace(/ · .*/, ''), modelo: m.id, etapa: s.etapa, ano: s.ano, ano_letivo: estado.perfil.escola.ano_letivo,
+        abrirEditor({ nome: m.id === 'branco' ? '' : m.id === 'plataforma' ? 'Prova Paulista' : m.nome.replace(/ · .*/, ''), modelo: m.id, tipo: m.tipo || 'questoes', componentes: [], etapa: s.etapa, ano: s.ano, ano_letivo: estado.perfil.escola.ano_letivo,
           escola_id: estado.perfil.escola.id, data: new Date().toISOString().slice(0, 10), faixas: JSON.parse(JSON.stringify(m.faixas)), questoes: qs,
           descritores: JSON.parse(JSON.stringify(m.descritores)) }, t);
       };
@@ -870,7 +873,7 @@
     }
     var mais = el('button', 'btn btn-peq', '+ Componente'); mais.type = 'button'; mais.onclick = function () { blocos.push(['MAT', 10]); aplicarBlocos(); desenharBlocos(); };
     cq.appendChild(mais);
-    box.appendChild(cq);
+    if (!ehPct(av)) box.appendChild(cq);
 
     // gabarito e códigos
     var cg = el('div', 'card form');
@@ -923,7 +926,11 @@
       });
     }
 
-    box.appendChild(cg); box.appendChild(cd);
+    if (ehPct(av)) {
+      var cpx = el('div', 'card'); cpx.appendChild(el('h2', null, 'Resultados importados'));
+      cpx.appendChild(el('p', 'ajuda', 'Esta avaliação não tem questões no app: os resultados (% de acerto por componente) vêm do arquivo da plataforma. Depois de salvar, abra cada turma e toque em "＋ Importar resultados".'));
+      box.appendChild(cpx);
+    } else { box.appendChild(cg); box.appendChild(cd); }
     desenharBlocos(); desenharQuestoes(); desenharDescricoes();
 
     // salvar / apagar
@@ -969,7 +976,7 @@
       avs.forEach(function (av) {
         var li = el('li'); li.setAttribute('data-ano', chaveSerie(av));
         li.appendChild(el('span', 'bloco-ano-selo', seloSerie(av)));
-        var nm = el('span', 'nome', av.nome); nm.appendChild(el('small', null, [rotSerie(av), dataBr(av.data), C.validas(av).length + ' questões'].filter(Boolean).join(' · '))); li.appendChild(nm);
+        var nm = el('span', 'nome', av.nome); nm.appendChild(el('small', null, [rotSerie(av), dataBr(av.data), descAvaliacao(av)].filter(Boolean).join(' · '))); li.appendChild(nm);
         var ed = el('button', 'btn btn-peq', 'Editar'); ed.type = 'button'; ed.onclick = function () { abrirEditor(av, null); }; li.appendChild(ed);
         ul.appendChild(li);
       });
@@ -1046,15 +1053,13 @@
   };
   function abrirResultado(av, t) {
     var box = $('tela-resultado'); carregando(box, 'Calculando…'); mostrar('tela-resultado', nomeTurma(t) + ' · resultado');
-    Promise.all([D.alunos.listar(t.id), D.respostas.daAvaliacao(av.id)]).then(function (r) {
-      var daTurma = {}; r[1].forEach(function (x) { if (x.turma_id === t.id) daTurma[x.aluno_id] = x.marcadas; });
-      var R = C.resultadoTurma(av, r[0], daTurma, r[1].map(function (x) { return x.marcadas; }));
+    D.alunos.listar(t.id).then(function (al) { return obterResultado(av, t, al); }).then(function (R) {
       box.textContent = '';
       var cab = el('div', 'card'); cab.setAttribute('data-ano', chaveSerie(t));
       cab.appendChild(el('h2', null, av.nome));
-      cab.appendChild(el('p', 'ajuda', 'Turma ' + nomeTurma(t) + ' · ' + R.turma.avaliados + ' de ' + R.turma.previstos + ' alunos lançados' + (R.faltaram.length ? ' · faltam ' + R.faltaram.length : '') + ' · faixas: abaixo de ' + av.faixas.limites[0] + '% ' + nomesFaixa(av)[0].toLowerCase() + ', abaixo de ' + av.faixas.limites[1] + '% ' + nomesFaixa(av)[1].toLowerCase() + '.'));
+      cab.appendChild(el('p', 'ajuda', 'Turma ' + nomeTurma(t) + ' · ' + R.turma.avaliados + ' de ' + R.turma.previstos + (ehPct(av) ? ' alunos com resultado importado' : ' alunos lançados') + (R.faltaram.length ? ' · sem resultado: ' + R.faltaram.length : '') + ' · faixas: abaixo de ' + av.faixas.limites[0] + '% ' + nomesFaixa(av)[0].toLowerCase() + ', abaixo de ' + av.faixas.limites[1] + '% ' + nomesFaixa(av)[1].toLowerCase() + '.'));
       box.appendChild(cab);
-      var abas = [['res', 'Resumo'], ['desc', 'Descritores'], ['alu', 'Alunos'], ['q', 'Questões'], ['enc', 'Encaminhamentos']];
+      var abas = ehPct(av) ? [['res', 'Resumo'], ['alu', 'Alunos'], ['enc', 'Encaminhamentos']] : [['res', 'Resumo'], ['desc', 'Descritores'], ['alu', 'Alunos'], ['q', 'Questões'], ['enc', 'Encaminhamentos']];
       var ch = el('div', 'chips'); ch.setAttribute('role', 'tablist'); box.appendChild(ch);
       var area = el('div', 'area-res'); box.appendChild(area);
       function ir(id) {
@@ -1101,7 +1106,7 @@
     var busca = input('search'); busca.placeholder = 'Buscar aluno'; busca.className = 'busca'; busca.setAttribute('aria-label', 'Buscar aluno');
     area.appendChild(busca);
     var cc = el('div', 'card'); var ul = el('ul', 'lista'); cc.appendChild(ul); area.appendChild(cc);
-    cc.insertBefore(el('p', 'ajuda', 'Do menor para o maior acerto. Abaixo de cada nome, os códigos que o aluno errou.'), ul);
+    cc.insertBefore(el('p', 'ajuda', R.tipo === 'percentual' ? 'Do menor para o maior acerto, com o % de cada componente.' : 'Do menor para o maior acerto. Abaixo de cada nome, os códigos que o aluno errou.'), ul);
     R.porAluno.forEach(function (r) {
       var li = el('li'); li.dataset.nome = r.aluno.nome.toLowerCase();
       li.appendChild(el('span', 'n', r.aluno.numero));
@@ -1130,7 +1135,7 @@
     area.appendChild(cc);
   }
   function resEncaminhamentos(area, av, R) {
-    area.appendChild(el('p', 'ajuda', 'Grupos sugeridos para reagrupamento, com os códigos que cada grupo mais errou. É um ponto de partida: ajuste com o que você conhece da turma.'));
+    area.appendChild(el('p', 'ajuda', R.tipo === 'percentual' ? 'Grupos sugeridos para reagrupamento em cada componente, a partir do % de acerto da plataforma. É um ponto de partida: ajuste com o que você conhece da turma.' : 'Grupos sugeridos para reagrupamento, com os códigos que cada grupo mais errou. É um ponto de partida: ajuste com o que você conhece da turma.'));
     R.comps.forEach(function (c) {
       var G = R.grupos[c], cc = el('div', 'card'); cc.appendChild(el('h3', null, M.nomeComp(c)));
       [0, 1].forEach(function (f) {
@@ -1932,6 +1937,157 @@
       }).catch(function (x) { falhou(x); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
     }
     prepararAba();
+  }
+
+  /* =====================  Importar resultados de avaliação (arquivo da plataforma)  ===================== */
+  function ehPct(av) { return av.tipo === 'percentual'; }
+  function descAvaliacao(av) { return ehPct(av) ? ((av.componentes || []).length ? av.componentes.map(M.nomeComp).join(' · ') + ' · ' : '') + 'importada da plataforma' : C.componentes(av).map(M.nomeComp).join(' · ') + ' · ' + C.validas(av).length + ' questões'; }
+  // resultado da turma, seja por questões (respostas) ou importado (% por componente)
+  function obterResultado(av, t, alunos) {
+    if (ehPct(av)) return D.notas.daAvaliacao(av.id).then(function (ns) {
+      var daTurma = {}; ns.forEach(function (n) { if (n.turma_id === t.id) daTurma[n.aluno_id] = n.valores; });
+      return C.resultadoPct(av, alunos, daTurma, ns.map(function (n) { return n.valores; }));
+    });
+    return D.respostas.daAvaliacao(av.id).then(function (rs) {
+      var daTurma = {}; rs.forEach(function (r) { if (r.turma_id === t.id) daTurma[r.aluno_id] = r.marcadas; });
+      return C.resultadoTurma(av, alunos, daTurma, rs.map(function (r) { return r.marcadas; }));
+    });
+  }
+  var MAPA_COMP = [
+    [/^(MAT|MATEMATICA)$/, 'MAT'], [/^(PORT|LP|LPO|LINGUA PORTUGUESA|PORTUGUES|L PORTUGUESA)$/, 'LP'], [/^(ING|INGLES|LINGUA INGLESA)$/, 'ING'],
+    [/^(HIST|HIS|HISTORIA)$/, 'HIS'], [/^(GEO|GEOGRAFIA)$/, 'GEO'], [/^(CIE|CIEN|CIENCIAS)$/, 'CIE'], [/^(FILO|FIL|FILOSOFIA)$/, 'FIL'],
+    [/^(SOC|SOCIOLOGIA)$/, 'SOC'], [/^(BIO|BIOLOGIA)$/, 'BIO'], [/^(FIS|FISICA)$/, 'FIS'], [/^(QUI|QUIMICA)$/, 'QUI'], [/^(FIN|EDUCACAO FINANCEIRA)$/, 'FIN'],
+    [/^(TEC|TECNOLOGIA)$/, 'TEC'], [/^(ART|ARTE|ARTES)$/, 'ART'], [/^(EDF|ED FISICA|EDUCACAO FISICA)$/, 'EDF'], [/^(RED|REDACAO)$/, 'RED']
+  ];
+  function lerPct(v) {
+    if (v === '' || v == null) return null;
+    var s = String(v).trim(), temPct = /%/.test(s), n = Number(s.replace('%', '').replace(',', '.'));
+    if (!isFinite(n)) return null;
+    if (temPct || n > 1) n = n / 100;
+    return Math.max(0, Math.min(1, n));
+  }
+  // arquivo -> linhas da 1ª aba com cabeçalho de nome
+  function escolherArquivo(titulo, explicacao, depois) {
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', explicacao));
+    corpo.appendChild(el('p', 'ajuda', '🔒 O arquivo é lido só neste aparelho. O app guarda apenas o resultado de cada aluno; RA e outros dados pessoais são descartados.'));
+    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.htm,.html,.ods'; corpo.appendChild(campo('Arquivo', arq));
+    var st = el('p', 'ajuda'); corpo.appendChild(st);
+    arq.onchange = function () {
+      if (!arq.files[0]) return; st.textContent = 'Lendo o arquivo…';
+      var nomeArq = arq.files[0].name;
+      lerArquivo(arq.files[0]).then(function (abas) {
+        var I = window.LUME_IMPORTA, achou = null;
+        abas.some(function (a) { var d = I.detectar(a.linhas); if (d) { achou = { aba: a, det: d }; return true; } return false; });
+        if (!achou) throw new Error('Não encontrei a coluna com o nome dos alunos neste arquivo.');
+        fecharModal(); depois(nomeArq, achou.aba.linhas, achou.det);
+      }).catch(function (e) { st.textContent = ''; falhou(e); });
+    };
+    modal(titulo, corpo, [['Cancelar', '', fecharModal]]);
+  }
+  // casa as linhas do arquivo com os alunos da turma (pelo nome)
+  function casarAlunos(alunosTurma, nomes) {
+    var N = window.LUME_IMPORTA.norm, porNome = {};
+    alunosTurma.forEach(function (a) { porNome[N(a.nome)] = a; });
+    return nomes.map(function (n) { return porNome[N(n)] || null; });
+  }
+
+  function abrirImportResultados(av, t) {
+    escolherArquivo('＋ Importar resultados · ' + nomeTurma(t), 'Escolha o arquivo exportado da plataforma para a turma ' + nomeTurma(t) + ' (Excel ou CSV), com o nome de cada aluno e o % de acerto por componente.', function (nomeArq, L, det) {
+      var cab = L[det.cab] || [], N = window.LUME_IMPORTA.norm, cols = [], colGeral = -1, colPart = -1;
+      cab.forEach(function (h, i) {
+        var n = N(h).replace(/^\(?%\)?\s*/, '').replace(/\(%\)/, '').trim();
+        if (/PARTICIPA/.test(n)) { colPart = i; return; }
+        if (/^(ACERTOS?|GERAL|MEDIA|TOTAL|% ACERTOS?|PERCENTUAL)$/.test(n) || /ACERTO/.test(n)) { if (colGeral < 0) colGeral = i; return; }
+        for (var k = 0; k < MAPA_COMP.length; k++) if (MAPA_COMP[k][0].test(n)) { cols.push([i, MAPA_COMP[k][1]]); break; }
+      });
+      var linhas = [];
+      for (var r = det.cab + 1; r < L.length; r++) {
+        var l = L[r] || [], nome = String(l[det.cols.nome] || '').replace(/\s+/g, ' ').trim();
+        if (nome.length < 3) continue;
+        var part = colPart >= 0 ? lerPct(l[colPart]) : 1;
+        var v = {}; cols.forEach(function (c) { var x = lerPct(l[c[0]]); if (x != null) v[c[1]] = x; });
+        if (colGeral >= 0) { var g = lerPct(l[colGeral]); if (g != null) v.GERAL = g; }
+        linhas.push({ nome: nome, valores: v, faltou: part === 0 || part == null || !Object.keys(v).length });
+      }
+      var compsUsados = cols.map(function (c) { return c[1]; }).filter(function (c) { return linhas.some(function (x) { return x.valores[c] != null; }); });
+      telaImportResultado(av, t, nomeArq, linhas, compsUsados, function (aluno, x) { return { avaliacao_id: av.id, aluno_id: aluno.id, turma_id: t.id, escola_id: t.escola_id, valores: x.valores }; },
+        function (lista) { return D.notas.salvarVarios(lista); },
+        compsUsados.length ? 'Componentes encontrados: ' + compsUsados.map(M.nomeComp).join(', ') + (colGeral >= 0 ? ' e o % geral' : '') + '.' : 'Não encontrei colunas de componentes (MAT, PORT…).');
+    });
+  }
+
+  function abrirImportRespostas(av, t) {
+    escolherArquivo('＋ Importar respostas · ' + nomeTurma(t), 'Escolha um arquivo (Excel ou CSV) com o nome de cada aluno e uma coluna por questão (Q1, Q2… ou 1, 2…) com a alternativa marcada (A a E).', function (nomeArq, L, det) {
+      var cab = L[det.cab] || [], N = window.LUME_IMPORTA.norm, mapa = {};
+      cab.forEach(function (h, i) {
+        if (i === det.cols.nome || i === det.cols.numero) return;
+        var m = /^(?:Q|QUESTAO|QUEST|ITEM|QUESTAO N|Q N)?\s*0*(\d{1,3})$/.exec(N(h));
+        if (m) { var idx = -1; av.questoes.forEach(function (q, k) { if (q.n === Number(m[1])) idx = k; }); if (idx >= 0) mapa[idx] = i; }
+      });
+      var nq = Object.keys(mapa).length, linhas = [];
+      for (var r = det.cab + 1; r < L.length; r++) {
+        var l = L[r] || [], nome = String(l[det.cols.nome] || '').replace(/\s+/g, ' ').trim();
+        if (nome.length < 3) continue;
+        var marc = av.questoes.map(function (q, k) { var c = mapa[k] == null ? '' : N(l[mapa[k]]).charAt(0); return /[A-E]/.test(c) ? c : '-'; }).join('');
+        linhas.push({ nome: nome, marcadas: marc, faltou: !C.fez(marc) });
+      }
+      telaImportResultado(av, t, nomeArq, linhas, null, function (aluno, x) { return { avaliacao_id: av.id, aluno_id: aluno.id, turma_id: t.id, escola_id: t.escola_id, marcadas: x.marcadas }; },
+        function (lista) { return lista.reduce(function (p, r) { return p.then(function () { return D.respostas.salvar(r); }); }, Promise.resolve()); },
+        nq ? 'Encontrei ' + nq + ' de ' + av.questoes.length + ' questões no arquivo.' : 'Não encontrei colunas de questões (Q1, Q2… ou 1, 2…).');
+    });
+  }
+
+  // prévia comum às duas importações
+  function telaImportResultado(av, t, nomeArq, linhas, comps, montar, gravar, resumoColunas) {
+    var box = $('tela-lancar'); carregando(box); mostrar('tela-lancar', 'Importar · ' + nomeTurma(t));
+    estado.turma = t;
+    D.alunos.listar(t.id).then(function (alunosT) {
+      box.textContent = '';
+      var validas = linhas.filter(function (x) { return !x.faltou; });
+      var casados = casarAlunos(alunosT, validas.map(function (x) { return x.nome; }));
+      var semCadastro = validas.filter(function (x, i) { return !casados[i]; });
+      var c = el('div', 'card form');
+      c.appendChild(el('h2', null, av.nome));
+      c.appendChild(el('p', 'ajuda', nomeArq + ' · turma ' + nomeTurma(t) + ' · ' + resumoColunas));
+      var nums = el('div', 'nums');
+      [['Com resultado', validas.length], ['Já cadastrados', validas.length - semCadastro.length], ['Faltaram', linhas.length - validas.length]].forEach(function (k) { var d = el('div'); d.appendChild(el('small', null, k[0])); d.appendChild(el('b', null, String(k[1]))); nums.appendChild(d); });
+      c.appendChild(nums);
+      var cad = input('checkbox'); cad.checked = true;
+      if (semCadastro.length) {
+        c.appendChild(el('p', 'erro', semCadastro.length + (semCadastro.length === 1 ? ' aluno do arquivo não está cadastrado' : ' alunos do arquivo não estão cadastrados') + ' nesta turma (o nome não bate): ' + semCadastro.map(function (x) { return x.nome; }).slice(0, 6).join(', ') + (semCadastro.length > 6 ? '…' : '')));
+        var lb = el('label', 'marca-linha'); lb.appendChild(cad); lb.appendChild(document.createTextNode(' Cadastrar esses alunos na turma ' + nomeTurma(t) + ' ao importar')); c.appendChild(lb);
+      }
+      box.appendChild(c);
+      var prev = el('div', 'card'); prev.appendChild(el('h3', null, 'Prévia'));
+      var ul = el('ul', 'lista');
+      validas.slice(0, 8).forEach(function (x, i) {
+        var li = el('li'); li.appendChild(el('span', 'nome', x.nome));
+        li.appendChild(el('small', 'etq', x.valores ? (x.valores.GERAL != null ? 'Geral ' + pct(x.valores.GERAL) : Object.keys(x.valores).map(function (k) { return k + ' ' + pct(x.valores[k]); }).slice(0, 2).join(' · ')) : x.marcadas.slice(0, 10) + (x.marcadas.length > 10 ? '…' : '')));
+        ul.appendChild(li);
+      });
+      if (validas.length > 8) ul.appendChild(el('li', 'vazio', '… e mais ' + (validas.length - 8)));
+      if (!validas.length) ul.appendChild(el('li', 'vazio', 'Nenhum resultado encontrado no arquivo.'));
+      prev.appendChild(ul); box.appendChild(prev);
+      var barra = el('div', 'acoes barra-salvar');
+      var bi = el('button', 'btn btn-pri', 'Importar ' + validas.length + (validas.length === 1 ? ' resultado' : ' resultados')); bi.type = 'button'; bi.disabled = !validas.length;
+      var bc = el('button', 'btn', 'Cancelar'); bc.type = 'button'; bc.onclick = function () { abrirTurma(t); };
+      barra.appendChild(bi); barra.appendChild(bc); box.appendChild(barra);
+      bi.onclick = function () {
+        bi.disabled = true; bi.textContent = 'Importando…';
+        var faltam = semCadastro.length && cad.checked ? semCadastro : [];
+        var prox = alunosT.reduce(function (m, a) { return Math.max(m, a.numero); }, 0) + 1;
+        var pCad = faltam.length ? D.alunos.salvarVarios(faltam.map(function (x, i) { return { escola_id: t.escola_id, turma_id: t.id, numero: Math.min(99, prox + i), nome: x.nome, ativo: true }; })).then(function () { return D.alunos.listar(t.id); }) : Promise.resolve(alunosT);
+        pCad.then(function (todos) {
+          var cas = casarAlunos(todos, validas.map(function (x) { return x.nome; }));
+          var lista = []; validas.forEach(function (x, i) { if (cas[i]) lista.push(montar(cas[i], x)); });
+          return gravar(lista).then(function () { return lista.length; });
+        }).then(function (n) {
+          aviso(n + (n === 1 ? ' resultado importado' : ' resultados importados') + (faltam.length ? ' e ' + faltam.length + (faltam.length === 1 ? ' aluno cadastrado.' : ' alunos cadastrados.') : '.'));
+          abrirTurma(t);
+        }).catch(function (e) { falhou(e); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
+      };
+    }).catch(falhou);
   }
 
   /* ---------- administração ---------- */

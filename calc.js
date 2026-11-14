@@ -91,6 +91,38 @@
       porQuestao: porQuestao, porCodigo: porCodigo, grupos: grupos };
   }
 
-  var api = { LETRAS: LETRAS, validas: validas, fez: fez, faixaDe: faixaDe, corrigir: corrigir, resultadoTurma: resultadoTurma, componentes: componentes };
+  /**
+   * Avaliação importada da plataforma: só o % de acerto de cada aluno (geral e por componente, de 0 a 1).
+   * notasTurma: {aluno_id: valores}; notasSerie: [valores] de todas as turmas da série.
+   */
+  function resultadoPct(av, alunos, notasTurma, notasSerie) {
+    var comps = (av.componentes && av.componentes.length) ? av.componentes.slice() : [];
+    if (!comps.length) Object.keys(notasTurma).concat([]).forEach(function (k) { Object.keys(notasTurma[k] || {}).forEach(function (c) { if (c !== 'GERAL' && comps.indexOf(c) === -1) comps.push(c); }); });
+    function geral(v) { return v.GERAL != null ? v.GERAL : media(comps.map(function (c) { return v[c]; })); }
+    var ativos = alunos.filter(function (a) { return a.ativo !== false; }), porAluno = [], faltaram = [];
+    ativos.forEach(function (a) {
+      var v = notasTurma[a.id]; if (!v) { faltaram.push(a); return; }
+      var r = { aluno: a, pct: geral(v), porComp: {}, faixaComp: {}, erradas: [], acertos: null, total: null };
+      comps.forEach(function (c) { if (v[c] != null) { r.porComp[c] = v[c]; r.faixaComp[c] = faixaDe(av, v[c]); } });
+      r.faixa = r.pct == null ? null : faixaDe(av, r.pct);
+      porAluno.push(r);
+    });
+    var turma = { avaliados: porAluno.length, previstos: ativos.length, media: media(porAluno.map(function (r) { return r.pct; })), porComp: {}, faixas: [0, 0, 0], faixasComp: {} };
+    porAluno.forEach(function (r) { if (r.faixa != null) turma.faixas[r.faixa]++; });
+    comps.forEach(function (c) {
+      turma.porComp[c] = media(porAluno.map(function (r) { return r.porComp[c]; }));
+      var f = [0, 0, 0]; porAluno.forEach(function (r) { if (r.faixaComp[c] != null) f[r.faixaComp[c]]++; }); turma.faixasComp[c] = f;
+    });
+    var serie = { avaliados: (notasSerie || []).length, media: media((notasSerie || []).map(geral)), porComp: {} };
+    comps.forEach(function (c) { serie.porComp[c] = media((notasSerie || []).map(function (v) { return v[c]; })); });
+    var grupos = {};
+    comps.forEach(function (c) {
+      function grupo(f) { return { alunos: porAluno.filter(function (r) { return r.faixaComp[c] === f; }).sort(function (a, b) { return a.porComp[c] - b.porComp[c]; }), frageis: [] }; }
+      grupos[c] = { abaixo: grupo(0), basico: grupo(1), monitores: porAluno.filter(function (r) { return r.porComp[c] != null && r.porComp[c] >= 0.9; }).sort(function (a, b) { return b.porComp[c] - a.porComp[c]; }) };
+    });
+    return { tipo: 'percentual', comps: comps, porAluno: porAluno.sort(function (a, b) { return a.pct - b.pct; }), faltaram: faltaram, turma: turma, serie: serie, porQuestao: [], porCodigo: [], grupos: grupos };
+  }
+
+  var api = { resultadoPct: resultadoPct, LETRAS: LETRAS, validas: validas, fez: fez, faixaDe: faixaDe, corrigir: corrigir, resultadoTurma: resultadoTurma, componentes: componentes };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else raiz.LUME_CALC = api;
 })(typeof window !== 'undefined' ? window : this);
