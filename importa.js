@@ -14,7 +14,7 @@
 
   var R = {
     nome: /^(NOME( COMPLETO)?( DO| DA)?( \(?A\)?)? ?(ALUNO|ALUNA|ALUNO\(A\)|ESTUDANTE)?|ALUNO|ALUNA|ALUNO\(A\)|ESTUDANTE|NOME DO\(A\) ALUNO\(A\))$/,
-    numero: /^(N|NO|N O|NR|NRO|NUM|NUMERO|N CHAMADA|NO CHAMADA|NUMERO DE CHAMADA|NUMERO CHAMADA|CHAMADA|N DE CHAMADA)$/,
+    numero: /^(N|NO|N O|NR|NRO|NUM|NUMERO|N CHAMADA|NO CHAMADA|NO DE CHAMADA|N O DE CHAMADA|NUMERO DE CHAMADA|NUMERO CHAMADA|CHAMADA|N DE CHAMADA|NR DE CHAMADA)$/,
     situacao: /SITUACAO|STATUS/,
     turma: /^(TURMA|CLASSE|TURMA\/CLASSE|DESCRICAO DA TURMA|DESCRICAO TURMA|SERIE\/TURMA|ANO\/TURMA|TURMA \(SERIE\))$/,
     serie: /^(SERIE|ANO|ANO\/SERIE|SERIE\/ANO|ANO ESCOLAR|GRAU\/SERIE)$/,
@@ -111,6 +111,18 @@
     });
   }
 
-  var api = { norm: norm, bonito: bonito, detectar: detectar, interpretarTurma: interpretarTurma, ativo: ativo, turmaDoTitulo: turmaDoTitulo, extrair: extrair, lerCsv: lerCsv };
+  /** Tabelas de um arquivo .htm/.html (ex.: "Lista de Alunos" exportada da SED) -> [{nome, linhas}] */
+  function lerHtml(texto, DOMParserClasse) {
+    var doc = new (DOMParserClasse || DOMParser)().parseFromString(texto, 'text/html');
+    var titulo = (doc.querySelector('title') || {}).textContent || '';
+    return Array.prototype.map.call(doc.querySelectorAll('table'), function (tb, i) {
+      var linhas = Array.prototype.map.call(tb.querySelectorAll('tr'), function (tr) {
+        return Array.prototype.map.call(tr.querySelectorAll('th,td'), function (c) { return c.textContent.replace(/\s+/g, ' ').trim(); });
+      });
+      return { nome: (titulo || 'Tabela') + (i ? ' ' + (i + 1) : ''), linhas: linhas };
+    });
+  }
+
+  var api = { lerHtml: lerHtml, norm: norm, bonito: bonito, detectar: detectar, interpretarTurma: interpretarTurma, ativo: ativo, turmaDoTitulo: turmaDoTitulo, extrair: extrair, lerCsv: lerCsv };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else raiz.LUME_IMPORTA = api;
 })(typeof window !== 'undefined' ? window : this);

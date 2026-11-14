@@ -1768,6 +1768,9 @@
   }
   function lerArquivo(arq) {
     var I = window.LUME_IMPORTA;
+    if (/\.html?$/i.test(arq.name)) {
+      return arq.text().then(function (t) { return I.lerHtml(t); });
+    }
     if (/\.csv$|\.txt$/i.test(arq.name)) {
       return arq.text().then(function (t) { return [{ nome: arq.name.replace(/\.\w+$/, ''), linhas: I.lerCsv(t) }]; });
     }
@@ -1780,9 +1783,9 @@
 
   function abrirImportacao() {
     var corpo = el('div', 'form');
-    corpo.appendChild(el('p', 'ajuda', 'Escolha a planilha com a lista de alunos (Excel ou CSV), por exemplo a exportada da SED. O app procura as colunas de nome, nº de chamada, situação e turma.'));
+    corpo.appendChild(el('p', 'ajuda', 'Escolha a lista de alunos exportada da SED (arquivo .htm "Lista de Alunos") ou uma planilha Excel/CSV. O app procura as colunas de nome, nº de chamada, situação e turma.'));
     corpo.appendChild(el('p', 'ajuda', '🔒 A planilha é lida só neste aparelho e não é enviada para lugar nenhum. O app guarda apenas nome, nº, turma e se o aluno está ativo. RA, data de nascimento e outras colunas são descartados.'));
-    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.ods,.txt';
+    var arq = input('file'); arq.accept = '.htm,.html,.xlsx,.xls,.csv,.ods,.txt';
     corpo.appendChild(campo('Planilha', arq));
     var st = el('p', 'ajuda'); corpo.appendChild(st);
     arq.onchange = function () {
@@ -2052,7 +2055,7 @@
     carregarTurmas().then(function (ts) {
       if (!ts.length) {
         var c = el('div', 'card'); c.appendChild(el('h2', null, 'Nenhuma turma ainda'));
-        c.appendChild(el('p', 'ajuda', 'Importe a lista de alunos da SED (Excel ou CSV): o app cria as turmas e cadastra os alunos. Ou cadastre as turmas na aba Turmas.'));
+        c.appendChild(el('p', 'ajuda', 'Importe a lista de alunos da SED (arquivo .htm, Excel ou CSV): o app cria as turmas e cadastra os alunos. Ou cadastre as turmas na aba Turmas.'));
         var bImp0 = el('button', 'btn btn-pri', '＋ Importar planilha de alunos'); bImp0.type = 'button'; bImp0.style.marginTop = '10px'; bImp0.onclick = abrirImportacao; c.appendChild(bImp0);
         box.appendChild(c); return;
       }
@@ -2062,7 +2065,7 @@
       var acoes = el('div', 'acoes');
       var b1 = el('button', 'btn btn-pri', '+ Aluno'); b1.type = 'button';
       var b2 = el('button', 'btn', '+ Vários de uma vez'); b2.type = 'button';
-      var bImp = el('button', 'btn', '＋ Importar planilha (Excel/CSV)'); bImp.type = 'button'; bImp.onclick = abrirImportacao;
+      var bImp = el('button', 'btn', '＋ Importar lista da SED (htm, Excel, CSV)'); bImp.type = 'button'; bImp.onclick = abrirImportacao;
       acoes.appendChild(b1); acoes.appendChild(b2); acoes.appendChild(bImp); topo.appendChild(acoes);
       topo.appendChild(el('p', 'ajuda', 'Guarde só o nome e o número de chamada. Não coloque RA, data de nascimento ou outros dados pessoais.'));
       var lista = el('div', 'card'); var h = el('h2', null, 'Alunos'); lista.appendChild(h); var ul = el('ul', 'lista'); lista.appendChild(ul);
