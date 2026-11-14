@@ -145,3 +145,38 @@
   window.LUME_MODELOS = { COMPONENTES: COMPONENTES, MODELOS: MODELOS, FAIXAS_SAEB: FAIXAS_SAEB, FAIXAS_ALFA: FAIXAS_ALFA,
     nomeComp: function (c) { for (var i = 0; i < COMPONENTES.length; i++) if (COMPONENTES[i][0] === c) return COMPONENTES[i][1]; return c; } };
 })();
+
+// Calendário escolar: legenda oficial do calendário homologado da SEDUC-SP.
+// tipo: let = dia letivo; evt = evento em dia letivo; est = estudos intensivos (letivo); sem = sem aula; plan = planejamento (sem aula); fds = fim de semana
+(function () {
+  var COD = {
+    L: ['Dia letivo', 'let'], S: ['Sábado', 'fds'], D: ['Domingo', 'fds'],
+    FE: ['Feriado', 'sem'], PTF: ['Ponto facultativo', 'sem'], F: ['Férias docentes', 'sem'], RE: ['Recesso escolar', 'sem'], DNL: ['Dia não letivo', 'sem'],
+    PL: ['Planejamento', 'plan'], REP: ['Replanejamento', 'plan'], SEI: ['Semana de estudos intensivos', 'est'],
+    IBI: ['Início de bimestre', 'evt'], FBI: ['Término de bimestre', 'evt'], RPM: ['Reunião da APM', 'evt'], RGE: ['Reunião do Grêmio Estudantil', 'evt'],
+    RCE: ['Reunião do Conselho de Escola', 'evt'], CES: ['Eleição do Conselho de Escola', 'evt'], RPR: ['Reunião de pais/responsáveis', 'evt'],
+    CCL: ['Conselho de classe', 'evt'], VLC: ['Semana Não Violência', 'evt'], DCC: ['Dia C da Convivência', 'evt'], FOR: ['Formatura', 'evt'],
+    AF: ['Avaliação final', 'evt'], RDL: ['Reposição de dia letivo', 'evt']
+  };
+  function cods(txt) { return String(txt || '').toUpperCase().split(/[+,;\s]+/).filter(function (c) { return c && COD[c]; }); }
+  // letivo: tem algum código e nenhum é de dia sem aula, planejamento ou fim de semana (regra que fecha os 201 dias do calendário 2026)
+  function letivo(lista) { return lista.length > 0 && !lista.some(function (c) { var t = COD[c][1]; return t === 'sem' || t === 'plan' || t === 'fds'; }); }
+  function tipo(lista) {
+    if (!lista.length) return '';
+    var t = lista.map(function (c) { return COD[c][1]; });
+    if (t.indexOf('sem') !== -1) return 'sem'; if (t.indexOf('plan') !== -1) return 'plan'; if (t.indexOf('est') !== -1) return 'est';
+    if (t.indexOf('evt') !== -1) return 'evt'; if (t.every(function (x) { return x === 'fds'; })) return 'fds'; return 'let';
+  }
+  // descrição escrita -> código (para planilhas que trazem o nome do evento)
+  function codigoDeTexto(txt) {
+    var n = String(txt || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    if (COD[n.trim()]) return n.trim();
+    var achou = ''; Object.keys(COD).some(function (k) { var d = COD[k][0].normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase(); if (n.indexOf(d) !== -1) { achou = k; return true; } return false; });
+    if (achou) return achou;
+    if (/FERIADO/.test(n)) return 'FE'; if (/FERIAS/.test(n)) return 'F'; if (/RECESSO/.test(n)) return 'RE'; if (/PONTO FACULT/.test(n)) return 'PTF';
+    if (/REPLANEJ/.test(n)) return 'REP'; if (/PLANEJ/.test(n)) return 'PL'; if (/CONSELHO DE CLASSE/.test(n)) return 'CCL'; if (/PAIS|RESPONSAVE/.test(n)) return 'RPR';
+    if (/LETIVO/.test(n) && !/NAO/.test(n)) return 'L'; if (/NAO LETIVO/.test(n)) return 'DNL';
+    return '';
+  }
+  window.LUME_CAL = { COD: COD, cods: cods, letivo: letivo, tipo: tipo, codigoDeTexto: codigoDeTexto };
+})();

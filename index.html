@@ -377,6 +377,34 @@
   .desc-enc { display: grid; gap: 2px; padding: 4px 0; }
   .desc-enc p { margin: 0; }
   .marca-linha { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+
+  /* =====================  calendário escolar  ===================== */
+  .atalho.c-cal { --cor: color-mix(in srgb, var(--accent) 55%, var(--brand-txt)); }
+  .cal-bims { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .cal-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .cal-mes { display: grid; text-align: center; } .cal-mes b { font: 800 20px var(--f-disp); } .cal-mes small { color: var(--muted); }
+  .cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-dsem { text-align: center; font-size: 12px; font-weight: 800; color: var(--muted); padding-bottom: 2px; }
+  .cal-dia { min-height: 52px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); display: grid; align-content: start; justify-items: center; gap: 1px; padding: 5px 2px; cursor: pointer; }
+  .cal-dia b { font: 800 15px var(--f-disp); } .cal-dia small { font-size: 10px; font-weight: 800; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
+  .cal-dia .cal-l { color: var(--muted); font-weight: 600; }
+  .cal-dia.hoje { outline: 3px solid var(--brand-txt); outline-offset: 1px; }
+  .cal-dia.cal-fds, .cal-dia.cal-nada { background: var(--bg); color: var(--muted); }
+  .cal-dia.cal-sem { background: color-mix(in srgb, var(--critical) 14%, var(--card)); border-color: color-mix(in srgb, var(--critical) 35%, var(--line)); }
+  .cal-dia.cal-plan { background: color-mix(in srgb, var(--good) 14%, var(--card)); border-color: color-mix(in srgb, var(--good) 35%, var(--line)); }
+  .cal-dia.cal-est { background: color-mix(in srgb, var(--accent) 22%, var(--card)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .cal-dia.cal-evt { background: color-mix(in srgb, var(--a3) 14%, var(--card)); border-color: color-mix(in srgb, var(--a3) 40%, var(--line)); }
+  .cal-vazio { min-height: 52px; }
+  .cal-leg { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .cal-leg span { display: inline-flex; align-items: center; gap: 5px; }
+  .cal-leg i { width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--card); }
+  .cal-leg i.cal-sem { background: color-mix(in srgb, var(--critical) 30%, var(--card)); } .cal-leg i.cal-plan { background: color-mix(in srgb, var(--good) 30%, var(--card)); }
+  .cal-leg i.cal-est { background: color-mix(in srgb, var(--accent) 40%, var(--card)); } .cal-leg i.cal-evt { background: color-mix(in srgb, var(--a3) 30%, var(--card)); }
+  .cal-codigos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+  .cal-cod { display: grid; text-align: left; gap: 1px; padding: 7px 9px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); cursor: pointer; }
+  .cal-cod b { font: 800 14px var(--f-disp); } .cal-cod small { font-size: 11px; color: var(--muted); }
+  .cal-cod.on { border-color: var(--brand-txt); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
+  .cal-cod.cal-sem b { color: var(--critical); } .cal-cod.cal-plan b { color: var(--good); } .cal-cod.cal-est b { color: color-mix(in srgb, var(--accent) 70%, var(--ink)); } .cal-cod.cal-evt b { color: var(--a3); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="modelos.js"></script>
@@ -462,6 +490,7 @@
   <section id="tela-apoio" class="hidden"></section>
   <section id="tela-flu" class="hidden"></section>
   <section id="tela-flu-apl" class="hidden"></section>
+  <section id="tela-cal" class="hidden"></section>
 </main>
 
 <div class="painel-tema hidden" id="painel-tema" role="dialog" aria-label="Cores e modo escuro">
@@ -516,7 +545,7 @@
   var ehGestor = function () { return estado.perfil && (estado.perfil.papel === 'gestor' || estado.perfil.super); };
 
   /* ---------- navegação ---------- */
-  var TELAS = ['tela-carregando', 'tela-entrar', 'tela-sem-escola', 'tela-nova-senha', 'tela-inicio', 'tela-turmas', 'tela-turma', 'tela-admin', 'tela-escolas', 'tela-breve', 'tela-avaliacoes', 'tela-editor', 'tela-lancar', 'tela-resultado', 'tela-apoio', 'tela-flu', 'tela-flu-apl'];
+  var TELAS = ['tela-carregando', 'tela-entrar', 'tela-sem-escola', 'tela-nova-senha', 'tela-inicio', 'tela-turmas', 'tela-turma', 'tela-admin', 'tela-escolas', 'tela-breve', 'tela-avaliacoes', 'tela-editor', 'tela-lancar', 'tela-resultado', 'tela-apoio', 'tela-flu', 'tela-flu-apl', 'tela-cal'];
   function mostrar(id, titulo) {
     TELAS.forEach(function (t) { $(t).classList.toggle('hidden', t !== id); });
     document.body.setAttribute('data-tela', id);
@@ -673,6 +702,9 @@
           card.querySelector('div').appendChild(el('span', 'selo', p.papel === 'gestor' ? n + (n === 1 ? ' apoio hoje' : ' apoios hoje') : n + (n === 1 ? ' apoio nesta semana' : ' apoios nesta semana')));
         }).catch(function () {});
       })(cApoio);
+      var cCal = atalho('c-cal', '📅', 'Calendário escolar', 'Dias letivos, bimestres, feriados e eventos da escola.', null, function () { abrirCalendario(); });
+      g.appendChild(cCal);
+      calCarregar().then(function () { if (Object.keys(estado.cal.dias).length) cCal.querySelector('div').appendChild(el('span', 'selo', calResumoHoje())); }).catch(function () {});
       g.appendChild(atalho('c-flu', '🎙️', 'Fluência leitora', 'Aplique o simulado de leitura com o caderno impresso: o app cronometra, você marca os erros e ele classifica o leitor.', null, abrirFlu));
       if (p.papel === 'gestor') g.appendChild(atalho('c-adm', '⚙️', 'Administração', 'Dados da escola, turmas, alunos e quem pode entrar no app.', null, function () { abrirAdmin('escola'); }));
     }
@@ -1802,7 +1834,7 @@
     }
     return Promise.all([carregarXlsx(), arq.arrayBuffer()]).then(function (r) {
       var wb = r[0].read(r[1], { type: 'array' });
-      return wb.SheetNames.map(function (n) { return { nome: n, linhas: r[0].utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' }) }; });
+      return wb.SheetNames.map(function (n) { return { nome: n, linhas: r[0].utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '', dateNF: 'dd/mm/yyyy' }) }; });
     });
   }
   function chaveT(t) { return (t.etapa || 'EF') + '-' + t.ano + '-' + String(t.letra).toUpperCase(); }
@@ -2331,6 +2363,189 @@
       });
       area.appendChild(cc);
     });
+  }
+
+  /* =====================  Calendário escolar  ===================== */
+  var CAL = window.LUME_CAL, MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  function calCarregar() {
+    var e = estado.perfil.escola;
+    return D.cal.ler(e.id, e.ano_letivo).then(function (c) { estado.cal = c; return c; });
+  }
+  function calCods(iso) { return CAL.cods((estado.cal && estado.cal.dias[iso]) || ''); }
+  function calLetivosEntre(de, ate) { var n = 0; Object.keys(estado.cal.dias).forEach(function (iso) { if (iso >= de && iso <= ate && CAL.letivo(CAL.cods(estado.cal.dias[iso]))) n++; }); return n; }
+  function calBimestreDe(iso) { return (estado.cal.bimestres || []).filter(function (b) { return iso >= b[1] && iso <= b[2]; })[0]; }
+  function calResumoHoje() {
+    var hoje = isoLocal(new Date()), c = calCods(hoje), b = calBimestreDe(hoje), ano = String(estado.perfil.escola.ano_letivo);
+    var falta = calLetivosEntre(hoje > ano + '-01-01' ? somaDias(hoje, 1) : ano + '-01-01', ano + '-12-31');
+    var dia = c.length ? c.map(function (k) { return CAL.COD[k][0]; }).join(' · ') : ([0, 6].indexOf(new Date().getDay()) !== -1 ? 'Fim de semana' : 'Sem marcação');
+    return 'Hoje: ' + dia + (b ? ' · ' + b[0] : '') + ' · faltam ' + falta + ' dias letivos';
+  }
+
+  function abrirCalendario(mes) {
+    var e = estado.perfil.escola, ano = e.ano_letivo;
+    var box = $('tela-cal'); carregando(box); mostrar('tela-cal', 'Calendário escolar');
+    calCarregar().then(function (cal) {
+      var hoje = isoLocal(new Date());
+      mes = mes || (String(ano) === hoje.slice(0, 4) ? hoje.slice(0, 7) : ano + '-02');
+      estado.calMes = mes;
+      box.textContent = '';
+      var total = calLetivosEntre(ano + '-01-01', ano + '-12-31'), vazio = !Object.keys(cal.dias).length;
+      // resumo do ano
+      var topo = el('div', 'card cal-topo');
+      topo.appendChild(el('h2', null, 'Calendário ' + ano));
+      var nums = el('div', 'nums');
+      [['Dias letivos', String(total)], ['Até hoje', String(calLetivosEntre(ano + '-01-01', hoje))], ['Faltam', String(calLetivosEntre(somaDias(hoje, 1), ano + '-12-31'))]].forEach(function (k) { var d = el('div'); d.appendChild(el('small', null, k[0])); d.appendChild(el('b', null, k[1])); nums.appendChild(d); });
+      topo.appendChild(nums);
+      if ((cal.bimestres || []).length) {
+        var lb = el('div', 'cal-bims');
+        cal.bimestres.forEach(function (b) { var s = el('span', 'etq' + (hoje >= b[1] && hoje <= b[2] ? ' gestor' : ''), b[0] + ': ' + dataBr(b[1]).slice(0, 5) + ' a ' + dataBr(b[2]).slice(0, 5) + ' · ' + calLetivosEntre(b[1], b[2]) + ' dias'); lb.appendChild(s); });
+        topo.appendChild(lb);
+      }
+      if (ehGestor()) {
+        var bp = el('button', 'btn btn-peq' + (vazio ? ' btn-pri' : ''), vazio ? '＋ Preencher o calendário' : '⚙️ Preencher / importar'); bp.type = 'button'; bp.style.marginTop = '10px'; bp.onclick = calPreencher; topo.appendChild(bp);
+      }
+      if (vazio) topo.appendChild(el('p', 'ajuda', ehGestor() ? 'O calendário ainda está vazio. Toque em "Preencher o calendário" para gerar os dias letivos, importar uma planilha ou ver como enviar o PDF homologado.' : 'A gestão da escola ainda não cadastrou o calendário.'));
+      box.appendChild(topo);
+      // mês
+      var cm = el('div', 'card');
+      var nav = el('div', 'cal-nav');
+      var y = +mes.slice(0, 4), m = +mes.slice(5, 7);
+      var ant = el('button', 'btn btn-peq', '‹'), prox = el('button', 'btn btn-peq', '›'); ant.type = prox.type = 'button';
+      ant.setAttribute('aria-label', 'Mês anterior'); prox.setAttribute('aria-label', 'Próximo mês');
+      ant.onclick = function () { var d = new Date(y, m - 2, 1); abrirCalendario(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2)); };
+      prox.onclick = function () { var d = new Date(y, m, 1); abrirCalendario(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2)); };
+      var tit = el('div', 'cal-mes'); tit.appendChild(el('b', null, MESES[m - 1] + ' ' + y));
+      var ultimo = new Date(y, m, 0).getDate();
+      tit.appendChild(el('small', null, calLetivosEntre(mes + '-01', mes + '-' + ('0' + ultimo).slice(-2)) + ' dias letivos'));
+      nav.appendChild(ant); nav.appendChild(tit); nav.appendChild(prox); cm.appendChild(nav);
+      var g = el('div', 'cal-grade');
+      ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(function (d) { g.appendChild(el('span', 'cal-dsem', d)); });
+      var dow0 = new Date(y, m - 1, 1).getDay();
+      for (var i = 0; i < dow0; i++) g.appendChild(el('span', 'cal-vazio'));
+      var eventos = [];
+      for (var d = 1; d <= ultimo; d++) {
+        var iso = mes + '-' + ('0' + d).slice(-2), cs = calCods(iso), dw = new Date(y, m - 1, d).getDay();
+        var tp = cs.length ? CAL.tipo(cs) : (dw === 0 || dw === 6 ? 'fds' : '');
+        var b = el('button', 'cal-dia cal-' + (tp || 'nada') + (iso === hoje ? ' hoje' : '')); b.type = 'button';
+        b.appendChild(el('b', null, String(d)));
+        var mostra = cs.filter(function (c) { return c !== 'L' && c !== 'S' && c !== 'D'; });
+        if (mostra.length) b.appendChild(el('small', null, mostra.join('+')));
+        else if (cs.indexOf('L') !== -1) b.appendChild(el('small', 'cal-l', 'L'));
+        b.setAttribute('aria-label', d + ' de ' + MESES[m - 1] + (cs.length ? ': ' + cs.map(function (c) { return CAL.COD[c][0]; }).join(', ') : ''));
+        (function (iso2) { b.onclick = function () { calDia(iso2); }; })(iso);
+        g.appendChild(b);
+        if (mostra.length) eventos.push([iso, mostra]);
+      }
+      cm.appendChild(g);
+      var leg = el('div', 'cal-leg');
+      [['let', 'Dia letivo'], ['evt', 'Evento'], ['est', 'Estudos intensivos'], ['plan', 'Planejamento'], ['sem', 'Sem aula']].forEach(function (x) { var s = el('span'); s.appendChild(el('i', 'cal-' + x[0])); s.appendChild(document.createTextNode(x[1])); leg.appendChild(s); });
+      cm.appendChild(leg);
+      box.appendChild(cm);
+      if (eventos.length) {
+        var ce = el('div', 'card'); ce.appendChild(el('h3', null, 'Neste mês'));
+        var ul = el('ul', 'lista');
+        eventos.forEach(function (ev) { var li = el('li'); li.appendChild(el('span', 'n', ev[0].slice(8))); li.appendChild(el('span', 'nome', ev[1].map(function (c) { return CAL.COD[c][0]; }).join(' · '))); ul.appendChild(li); });
+        ce.appendChild(ul); box.appendChild(ce);
+      }
+    }).catch(falhou);
+  }
+  function calDia(iso) {
+    var cs = calCods(iso), corpo = el('div', 'form');
+    var dt = deIso(iso), titulo = DIAS[dt.getDay()] ? DIAS[dt.getDay()] + ', ' + dataBr(iso) : (dt.getDay() === 0 ? 'Domingo, ' : 'Sábado, ') + dataBr(iso);
+    var b = calBimestreDe(iso); if (b) corpo.appendChild(el('p', 'ajuda', b[0]));
+    if (!ehGestor()) {
+      corpo.appendChild(el('p', null, cs.length ? cs.map(function (c) { return c + ' – ' + CAL.COD[c][0]; }).join('\n') : 'Sem marcação no calendário.'));
+      corpo.lastChild.style.whiteSpace = 'pre-line';
+      modal(titulo, corpo); return;
+    }
+    corpo.appendChild(el('p', 'ajuda', 'Toque nos códigos do dia (pode marcar mais de um). ' + (CAL.letivo(cs) ? 'Hoje conta como dia letivo.' : '')));
+    var sel = cs.slice(), w = el('div', 'cal-codigos');
+    Object.keys(CAL.COD).filter(function (c) { return c !== 'S' && c !== 'D'; }).forEach(function (c) {
+      var bt = el('button', 'cal-cod cal-' + CAL.COD[c][1] + (sel.indexOf(c) !== -1 ? ' on' : '')); bt.type = 'button';
+      bt.appendChild(el('b', null, c)); bt.appendChild(el('small', null, CAL.COD[c][0]));
+      bt.onclick = function () { var i = sel.indexOf(c); if (i === -1) sel.push(c); else sel.splice(i, 1); bt.classList.toggle('on', i === -1); };
+      w.appendChild(bt);
+    });
+    corpo.appendChild(w);
+    modal(titulo, corpo, [['Cancelar', '', fecharModal], ['Limpar dia', '', function () { sel = []; salvar(); }], ['Salvar', 'btn-pri', function () { salvar(); }]]);
+    function salvar() {
+      var ordem = Object.keys(CAL.COD), txt = sel.slice().sort(function (a, b2) { return ordem.indexOf(a) - ordem.indexOf(b2); }).join('+');
+      D.cal.salvarDias(estado.perfil.escola.id, [{ data: iso, codigos: txt }]).then(function () { fecharModal(); aviso('Dia salvo.'); abrirCalendario(estado.calMes); }).catch(falhou);
+    }
+  }
+
+  // ---------- preencher: gerar letivos, importar planilha, PDF ----------
+  function calPreencher() {
+    var e = estado.perfil.escola, ano = e.ano_letivo, corpo = el('div', 'form');
+    var bims = (estado.cal.bimestres && estado.cal.bimestres.length) ? estado.cal.bimestres : [['1º bimestre', '', ''], ['2º bimestre', '', ''], ['3º bimestre', '', ''], ['4º bimestre', '', '']];
+    corpo.appendChild(el('small', 'sub', '1. Gerar os dias letivos'));
+    corpo.appendChild(el('p', 'ajuda', 'Informe o início e o fim de cada bimestre. O app marca de segunda a sexta como dia letivo (L). Depois toque nos dias diferentes (feriados, recesso, reuniões…) para trocar o código.'));
+    var ins = bims.map(function (b) { var l = el('div', 'linha'), i1 = input('date', b[1]), i2 = input('date', b[2]); l.appendChild(campo(b[0] + ' · início', i1)); l.appendChild(campo('fim', i2)); corpo.appendChild(l); return [b[0], i1, i2]; });
+    var mant = input('checkbox'); mant.checked = true;
+    var lm = el('label', 'marca-linha'); lm.appendChild(mant); lm.appendChild(document.createTextNode(' Não mexer nos dias que já têm outro código')); corpo.appendChild(lm);
+    var bg = el('button', 'btn btn-pri', 'Gerar dias letivos'); bg.type = 'button'; corpo.appendChild(bg);
+    bg.onclick = function () {
+      var bs = ins.map(function (x) { return [x[0], x[1].value, x[2].value]; }).filter(function (b) { return b[1] && b[2] && b[2] >= b[1]; });
+      if (!bs.length) { aviso('Preencha o início e o fim de pelo menos um bimestre.', 'err'); return; }
+      var lista = [];
+      bs.forEach(function (b) { for (var iso = b[1]; iso <= b[2]; iso = somaDias(iso, 1)) { var dw = deIso(iso).getDay(); if (dw === 0 || dw === 6) continue; var ja = estado.cal.dias[iso]; if (mant.checked && ja && ja !== 'L') continue; lista.push({ data: iso, codigos: 'L' }); } });
+      bg.disabled = true;
+      D.cal.salvarBimestres(e.id, ano, bs).then(function () { return D.cal.salvarDias(e.id, lista); })
+        .then(function () { fecharModal(); aviso(lista.length + ' dias letivos marcados.'); abrirCalendario(); }).catch(function (x) { falhou(x); bg.disabled = false; });
+    };
+    corpo.appendChild(el('small', 'sub', '2. Importar planilha'));
+    corpo.appendChild(el('p', 'ajuda', 'Uma linha por dia: Data e Códigos (ex.: 02/02/2026; IBI ou 30/03/2026; RGE+L). Pode usar a descrição no lugar do código (ex.: "Feriado"). Os bimestres saem dos códigos IBI e FBI.'));
+    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.ods'; corpo.appendChild(campo('Planilha do calendário', arq));
+    var bm = el('button', 'btn-link', 'Baixar modelo'); bm.type = 'button'; bm.onclick = function () {
+      var csv = 'Data;Códigos;Observação\n02/02/' + ano + ';IBI;Início do 1º bimestre\n03/02/' + ano + ';L;\n16/02/' + ano + ';PTF;Carnaval\n19/02/' + ano + ';PL;Planejamento\n30/03/' + ano + ';RGE;\n';
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = 'modelo-calendario-lume.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 500);
+    };
+    corpo.appendChild(bm);
+    arq.onchange = function () { if (arq.files[0]) lerArquivo(arq.files[0]).then(function (abas) { calImportar(abas, arq.files[0].name); }).catch(falhou); };
+    corpo.appendChild(el('small', 'sub', '3. Calendário homologado em PDF'));
+    corpo.appendChild(el('p', 'ajuda', 'O PDF homologado da SEDUC é uma imagem e o app não consegue ler sozinho. Envie o PDF ao administrador do Lume: ele transforma em planilha para você importar aqui.'));
+    modal('Preencher o calendário ' + ano, corpo, [['Fechar', '', fecharModal]]);
+  }
+  function lerDataBr(v) {
+    var s = String(v || '').trim(), m;
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s))) return m[1] + '-' + m[2] + '-' + m[3];
+    if ((m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(s))) { var a = m[3].length === 2 ? '20' + m[3] : m[3]; return a + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2); }
+    if (/^\d{5}$/.test(s)) { var d = new Date(Date.UTC(1899, 11, 30) + Number(s) * 864e5); return d.toISOString().slice(0, 10); }
+    return '';
+  }
+  function calImportar(abas, nomeArq) {
+    var N = window.LUME_IMPORTA.norm, dias = {}, lidas = 0, ignoradas = 0;
+    abas.forEach(function (a) {
+      var L = a.linhas, cab = -1, cD = -1, cC = -1, cT = -1;
+      for (var r = 0; r < Math.min(L.length, 15) && cab < 0; r++) (L[r] || []).forEach(function (h, i) { var n = N(h); if (/^DATA|^DIA$/.test(n)) cD = i; else if (/^(CODIGO|CODIGOS|SIGLA|LEGENDA)/.test(n)) cC = i; else if (/^(EVENTO|DESCRICAO|OBSERVACAO|ATIVIDADE)/.test(n)) cT = i; if (cD >= 0 && (cC >= 0 || cT >= 0)) cab = r; });
+      if (cab < 0) return;
+      for (r = cab + 1; r < L.length; r++) {
+        var l = L[r] || [], iso = lerDataBr(l[cD]); if (!iso) continue;
+        var cs = cC >= 0 ? CAL.cods(String(l[cC] || '').toUpperCase()) : [];
+        if (!cs.length && cT >= 0) { var k = CAL.codigoDeTexto(l[cT]); if (k) cs = [k]; }
+        if (!cs.length) { ignoradas++; continue; }
+        var ja = dias[iso] ? dias[iso].split('+') : []; cs.forEach(function (c) { if (ja.indexOf(c) === -1) ja.push(c); }); dias[iso] = ja.join('+'); lidas++;
+      }
+    });
+    var datas = Object.keys(dias).sort();
+    if (!datas.length) { aviso('Não encontrei as colunas Data e Códigos (ou Descrição) na planilha.', 'err'); return; }
+    // bimestres pelos códigos IBI / FBI
+    var ini = datas.filter(function (d) { return CAL.cods(dias[d]).indexOf('IBI') !== -1; }), fim = datas.filter(function (d) { return CAL.cods(dias[d]).indexOf('FBI') !== -1; });
+    var bims = ini.map(function (d, i) { var f = fim.filter(function (x) { return x >= d && (!ini[i + 1] || x < ini[i + 1]); })[0]; return f ? [(i + 1) + 'º bimestre', d, f] : null; }).filter(Boolean);
+    var ano = estado.perfil.escola.ano_letivo, foraAno = datas.filter(function (d) { return d.slice(0, 4) !== String(ano); }).length;
+    fecharModal();
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', null, nomeArq + ': ' + datas.length + ' dias com código, de ' + dataBr(datas[0]) + ' a ' + dataBr(datas[datas.length - 1]) + '.'));
+    var letivos = datas.filter(function (d) { return CAL.letivo(CAL.cods(dias[d])); }).length;
+    corpo.appendChild(el('p', null, letivos + ' dias letivos' + (bims.length ? ' · ' + bims.length + ' bimestres (pelos códigos IBI/FBI)' : '') + '.'));
+    if (ignoradas) corpo.appendChild(el('p', 'ajuda', ignoradas + ' linhas sem código reconhecido foram ignoradas.'));
+    if (foraAno) corpo.appendChild(el('p', 'erro', foraAno + ' dias são de outro ano (o ano letivo da escola é ' + ano + ') e não aparecerão no calendário deste ano.'));
+    modal('Importar calendário', corpo, [['Cancelar', '', fecharModal], ['Importar', 'btn-pri', function () {
+      var e = estado.perfil.escola;
+      D.cal.salvarDias(e.id, datas.map(function (d) { return { data: d, codigos: dias[d] }; }))
+        .then(function () { return bims.length ? D.cal.salvarBimestres(e.id, ano, bims) : null; })
+        .then(function () { fecharModal(); aviso('Calendário importado: ' + datas.length + ' dias.'); abrirCalendario(); }).catch(falhou);
+    }]]);
   }
 
   /* ---------- administração ---------- */

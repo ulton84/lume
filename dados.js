@@ -123,6 +123,20 @@
       },
       apagarTurma: function (av, turma) { return sb.from('notas').delete().eq('avaliacao_id', av).eq('turma_id', turma).then(ok); }
     };
+    D.cal = {
+      ler: function (escola, ano) {
+        return Promise.all([
+          sb.from('calendario').select('data,codigos').eq('escola_id', escola).gte('data', ano + '-01-01').lte('data', ano + '-12-31').then(ok),
+          sb.from('calendario_ano').select('bimestres').eq('escola_id', escola).eq('ano', ano).maybeSingle().then(ok)
+        ]).then(function (r) { var dias = {}; r[0].forEach(function (d) { dias[d.data] = d.codigos; }); return { dias: dias, bimestres: (r[1] && r[1].bimestres) || [] }; });
+      },
+      salvarDias: function (escola, lista) {
+        var apagar = lista.filter(function (d) { return !d.codigos; }).map(function (d) { return d.data; }), gravar = lista.filter(function (d) { return d.codigos; });
+        var p = gravar.length ? sb.from('calendario').upsert(gravar.map(function (d) { return { escola_id: escola, data: d.data, codigos: d.codigos }; })).then(ok) : Promise.resolve();
+        return p.then(function () { return apagar.length ? sb.from('calendario').delete().eq('escola_id', escola).in('data', apagar).then(ok) : null; });
+      },
+      salvarBimestres: function (escola, ano, bims) { return sb.from('calendario_ano').upsert({ escola_id: escola, ano: ano, bimestres: bims }).then(ok); }
+    };
     D.descImp = {
       listar: function (av) { return sb.from('desc_importados').select('escopo,itens').eq('avaliacao_id', av).then(ok); },
       salvar: function (d) { return sb.from('desc_importados').upsert({ avaliacao_id: d.avaliacao_id, escola_id: d.escola_id, escopo: d.escopo, itens: d.itens, atualizado_em: new Date().toISOString() }).then(ok); }
@@ -174,12 +188,12 @@
   function motorDemo() {
     var CH = 'lume-escolas-demo', CS = 'lume-escolas-demo-sessao';
     function uid() { return 'x' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
-    function ler() { try { var v = JSON.parse(localStorage.getItem(CH)); if (v && v.versao === 7) return v; } catch (e) {} return semente(); }
+    function ler() { try { var v = JSON.parse(localStorage.getItem(CH)); if (v && v.versao === 8) return v; } catch (e) {} return semente(); }
     function gravar(b) { try { localStorage.setItem(CH, JSON.stringify(b)); } catch (e) {} }
     function sessao() { try { return localStorage.getItem(CS) || ''; } catch (e) { return ''; } }
     function semente() {
       var ano = new Date().getFullYear(), esc = { id: 'esc1', nome: 'Escola de Demonstração', cidade: 'São Paulo', logo: '', ano_letivo: ano };
-      var b = { versao: 7, escolas: [esc], contas: [], perfis: [], convites: [], turmas: [], professor_turmas: [], alunos: [], superadmins: ['super@demo.lume'], avaliacoes: [], respostas: [], horarios: [], grade: [], apoios: [], flu_cadernos: [], flu_resultados: [], notas: [], desc_importados: [] };
+      var b = { versao: 8, escolas: [esc], contas: [], perfis: [], convites: [], turmas: [], professor_turmas: [], alunos: [], superadmins: ['super@demo.lume'], avaliacoes: [], respostas: [], horarios: [], grade: [], apoios: [], flu_cadernos: [], flu_resultados: [], notas: [], desc_importados: [], calendario: {}, calendario_ano: {} };
       [['gestor@demo.lume', 'Gestão Demonstração', 'gestor'], ['prof@demo.lume', 'Profª Ana (exemplo)', 'professor'], ['super@demo.lume', '', null]].forEach(function (u) {
         var id = uid(); b.contas.push({ id: id, email: u[0], senha: 'demo123' });
         if (u[2]) b.perfis.push({ id: id, escola_id: esc.id, nome: u[1], email: u[0], papel: u[2], ativo: true });
@@ -352,6 +366,12 @@
         });
       }); },
       apagarTurma: function (av, turma) { return mudar(function (b) { b.notas = b.notas.filter(function (x) { return !(x.avaliacao_id === av && x.turma_id === turma); }); }); }
+    };
+    D.cal = {
+      ler: function (escola, ano) { var b = ler(), dias = {}; Object.keys(b.calendario[escola] || {}).forEach(function (k) { if (k.slice(0, 4) === String(ano)) dias[k] = b.calendario[escola][k]; });
+        return espera({ dias: dias, bimestres: (b.calendario_ano[escola + '|' + ano] || []) }); },
+      salvarDias: function (escola, lista) { return mudar(function (b) { exigir(b, escola); var c = b.calendario[escola] = b.calendario[escola] || {}; lista.forEach(function (d) { if (d.codigos) c[d.data] = d.codigos; else delete c[d.data]; }); }); },
+      salvarBimestres: function (escola, ano, bims) { return mudar(function (b) { exigir(b, escola); b.calendario_ano[escola + '|' + ano] = bims; }); }
     };
     D.descImp = {
       listar: function (av) { return espera(ler().desc_importados.filter(function (d) { return d.avaliacao_id === av; }).map(function (d) { return { escopo: d.escopo, itens: d.itens }; })); },
