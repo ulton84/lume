@@ -96,7 +96,7 @@
         var dados = { escola_id: a.escola_id, turma_id: a.turma_id, numero: a.numero, nome: a.nome, ativo: a.ativo !== false };
         return (a.id ? sb.from('alunos').update(dados).eq('id', a.id) : sb.from('alunos').insert(dados)).select().single().then(ok);
       },
-      salvarVarios: function (lista) { return sb.from('alunos').insert(lista.map(function (a) { return { escola_id: a.escola_id, turma_id: a.turma_id, numero: a.numero, nome: a.nome }; })).then(ok); },
+      salvarVarios: function (lista) { return sb.from('alunos').insert(lista.map(function (a) { return { escola_id: a.escola_id, turma_id: a.turma_id, numero: a.numero, nome: a.nome, ativo: a.ativo !== false }; })).then(ok); },
       apagar: function (id) { return sb.from('alunos').delete().eq('id', id).then(ok); }
     };
     D.avaliacoes = {

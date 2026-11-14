@@ -367,11 +367,17 @@
     body { background: #fff !important; } .wrap { padding: 0; max-width: none; }
     .cad-pag { border: 0; border-radius: 0; break-after: page; page-break-after: always; min-height: 95vh; }
   }
+
+  /* importação de alunos */
+  .imp-grupo { border-left: 4px solid var(--cor, var(--line)); padding: 8px 0 8px 12px; margin-top: 10px; display: grid; gap: 2px; }
+  .imp-grupo small { color: var(--muted); } .imp-grupo p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+  .marca-linha { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="modelos.js"></script>
 <script src="calc.js"></script>
 <script src="flu-cadernos.js"></script>
+<script src="importa.js"></script>
 <script src="config.js"></script>
 <script src="dados.js"></script>
 </head>
@@ -1750,6 +1756,173 @@
     }).catch(function () {});
   }
 
+  /* =====================  Importar lista de alunos (Excel / CSV)  ===================== */
+  var XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  function carregarXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise(function (ok, erro) {
+      var s = document.createElement('script'); s.src = XLSX_URL;
+      s.onload = function () { ok(window.XLSX); }; s.onerror = function () { erro(new Error('Não consegui carregar o leitor de Excel. Confira a internet.')); };
+      document.head.appendChild(s);
+    });
+  }
+  function lerArquivo(arq) {
+    var I = window.LUME_IMPORTA;
+    if (/\.csv$|\.txt$/i.test(arq.name)) {
+      return arq.text().then(function (t) { return [{ nome: arq.name.replace(/\.\w+$/, ''), linhas: I.lerCsv(t) }]; });
+    }
+    return Promise.all([carregarXlsx(), arq.arrayBuffer()]).then(function (r) {
+      var wb = r[0].read(r[1], { type: 'array' });
+      return wb.SheetNames.map(function (n) { return { nome: n, linhas: r[0].utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' }) }; });
+    });
+  }
+  function chaveT(t) { return (t.etapa || 'EF') + '-' + t.ano + '-' + String(t.letra).toUpperCase(); }
+
+  function abrirImportacao() {
+    var corpo = el('div', 'form');
+    corpo.appendChild(el('p', 'ajuda', 'Escolha a planilha com a lista de alunos (Excel ou CSV), por exemplo a exportada da SED. O app procura as colunas de nome, nº de chamada, situação e turma.'));
+    corpo.appendChild(el('p', 'ajuda', '🔒 A planilha é lida só neste aparelho e não é enviada para lugar nenhum. O app guarda apenas nome, nº, turma e se o aluno está ativo. RA, data de nascimento e outras colunas são descartados.'));
+    var arq = input('file'); arq.accept = '.xlsx,.xls,.csv,.ods,.txt';
+    corpo.appendChild(campo('Planilha', arq));
+    var st = el('p', 'ajuda'); corpo.appendChild(st);
+    arq.onchange = function () {
+      if (!arq.files[0]) return;
+      st.textContent = 'Lendo a planilha…';
+      var nomeArq = arq.files[0].name;
+      lerArquivo(arq.files[0]).then(function (abas) {
+        abas = abas.filter(function (a) { return a.linhas.some(function (l) { return l.some(function (c) { return String(c).trim(); }); }); });
+        if (!abas.length) throw new Error('A planilha está vazia.');
+        fecharModal(); telaImportacao(nomeArq, abas);
+      }).catch(function (e) { st.textContent = ''; falhou(e); });
+    };
+    modal('＋ Importar lista de alunos', corpo, [['Cancelar', '', fecharModal]]);
+  }
+
+  function telaImportacao(nomeArq, abas) {
+    var I = window.LUME_IMPORTA, e = estado.perfil.escola;
+    var box = $('tela-admin'); box.textContent = ''; mostrar('tela-admin', 'Importar alunos');
+    var aba = 0, det = null, padrao = null, marcarSaida = false;
+    var cArq = el('div', 'card form'); box.appendChild(cArq);
+    var cCol = el('div', 'card form'); box.appendChild(cCol);
+    var cPrev = el('div', 'card'); box.appendChild(cPrev);
+    var barra = el('div', 'acoes barra-salvar'); box.appendChild(barra);
+
+    function nomesColunas(linhas, cab) {
+      var l = linhas[cab] || [], n = 0; linhas.slice(cab, cab + 20).forEach(function (x) { n = Math.max(n, x.length); });
+      var o = []; for (var i = 0; i < n; i++) o.push(String(l[i] || '').trim() || 'Coluna ' + String.fromCharCode(65 + (i % 26)));
+      return o;
+    }
+    function prepararAba() {
+      var L = abas[aba].linhas;
+      det = I.detectar(L) || { cab: 0, cols: { nome: -1, numero: -1, situacao: -1, turma: -1, serie: -1 } };
+      padrao = I.turmaDoTitulo(L, det.cab, abas[aba].nome);
+      desenhar();
+    }
+    function desenhar() {
+      var L = abas[aba].linhas;
+      // arquivo e aba
+      cArq.textContent = '';
+      cArq.appendChild(el('h2', null, 'Planilha'));
+      cArq.appendChild(el('p', 'ajuda', nomeArq + ' · lida só neste aparelho.'));
+      if (abas.length > 1) {
+        var sa = el('select'); abas.forEach(function (a, i) { var o = el('option', null, a.nome); o.value = i; sa.appendChild(o); }); sa.value = aba;
+        sa.onchange = function () { aba = Number(sa.value); prepararAba(); };
+        cArq.appendChild(campo('Aba da planilha', sa));
+      }
+      // colunas
+      cCol.textContent = '';
+      cCol.appendChild(el('h2', null, 'Colunas'));
+      cCol.appendChild(el('p', 'ajuda', det.cols.nome >= 0 ? 'Encontrei as colunas abaixo. Confira e corrija se precisar.' : 'Não encontrei a coluna com o nome dos alunos. Escolha abaixo qual é.'));
+      var cab = input('number', det.cab + 1); cab.min = 1; cab.max = L.length;
+      cab.onchange = function () { det.cab = Math.max(0, Math.min(L.length - 1, (Number(cab.value) || 1) - 1)); desenhar(); };
+      var lc = el('div', 'linha'); var cc = campo('Linha do cabeçalho', cab); cc.style.flex = '0 0 140px'; lc.appendChild(cc); cCol.appendChild(lc);
+      var nomes = nomesColunas(L, det.cab);
+      var lc2 = el('div', 'linha');
+      [['nome', 'Nome do aluno *'], ['numero', 'Nº de chamada'], ['situacao', 'Situação'], ['turma', 'Turma'], ['serie', 'Ano / série']].forEach(function (k) {
+        var s = el('select'); var o0 = el('option', null, '— não tem —'); o0.value = -1; s.appendChild(o0);
+        nomes.forEach(function (n, i) { var o = el('option', null, n); o.value = i; s.appendChild(o); });
+        s.value = det.cols[k[0]];
+        s.onchange = function () { det.cols[k[0]] = Number(s.value); desenharPrevia(); };
+        lc2.appendChild(campo(k[1], s));
+      });
+      cCol.appendChild(lc2);
+      // turma quando a planilha não diz
+      var semTurma = det.cols.turma < 0 && det.cols.serie < 0;
+      if (semTurma) {
+        var lt = el('div', 'linha');
+        var ss = seletorSerie(padrao ? valorSerie(padrao) : 'EF-1'), le = input('text', padrao ? padrao.letra : ''); le.maxLength = 12; le.placeholder = 'A';
+        var tu = seletorTurno(padrao && padrao.turno ? padrao.turno : 'Manhã');
+        function atualizarPadrao() { var sr = lerSerie(ss); padrao = le.value.trim() ? { etapa: sr.etapa, ano: sr.ano, letra: le.value.trim().length <= 2 ? le.value.trim().toUpperCase() : le.value.trim(), turno: tu.value } : null; desenharPrevia(); }
+        ss.onchange = le.oninput = tu.onchange = atualizarPadrao;
+        cCol.appendChild(el('p', 'ajuda', padrao ? 'A planilha não tem coluna de turma; achei a turma no título: confira.' : 'A planilha não tem coluna de turma. Diga de qual turma é esta lista:'));
+        lt.appendChild(campo('Ano / série', ss)); lt.appendChild(campo('Turma', le)); lt.appendChild(campo('Turno', tu)); cCol.appendChild(lt);
+      }
+      var cb = input('checkbox'); cb.checked = marcarSaida; cb.onchange = function () { marcarSaida = cb.checked; };
+      var lb = el('label', 'marca-linha'); lb.appendChild(cb); lb.appendChild(document.createTextNode(' Marcar como "saiu" quem está no app mas não aparece nesta planilha (só nas turmas da planilha)'));
+      cCol.appendChild(lb);
+      desenharPrevia();
+    }
+    var grupos = [];
+    function desenharPrevia() {
+      cPrev.textContent = ''; barra.textContent = '';
+      cPrev.appendChild(el('h2', null, 'Prévia'));
+      if (det.cols.nome < 0) { cPrev.appendChild(el('p', 'ajuda', 'Escolha a coluna do nome do aluno para ver a prévia.')); return; }
+      var alunos = I.extrair(abas[aba].linhas, det, padrao);
+      var semT = alunos.filter(function (a) { return !a.turma; }).length;
+      var porT = {}; grupos = [];
+      alunos.forEach(function (a) { if (!a.turma) return; var k = chaveT(a.turma); if (!porT[k]) { porT[k] = { turma: a.turma, alunos: [] }; grupos.push(porT[k]); } porT[k].alunos.push(a); });
+      if (!grupos.length) { cPrev.appendChild(el('p', 'erro', semT ? 'Não consegui descobrir a turma dos alunos. Escolha a coluna de turma ou digite a turma acima.' : 'Nenhum aluno encontrado abaixo da linha do cabeçalho.')); return; }
+      var existentes = {}; estado.turmas.forEach(function (t) { existentes[chaveT(t)] = t; });
+      var tot = 0;
+      grupos.forEach(function (g) {
+        var ex = existentes[chaveT(g.turma)], at = g.alunos.filter(function (a) { return a.ativo; }).length; tot += g.alunos.length;
+        var d = el('div', 'imp-grupo'); d.setAttribute('data-ano', chaveSerie(g.turma));
+        var tp = el('div', 'desc-topo'); tp.appendChild(el('b', null, 'Turma ' + nomeTurma(g.turma))); tp.appendChild(el('span', 'etq' + (ex ? '' : ' gestor'), ex ? 'Já existe' : 'Nova turma')); d.appendChild(tp);
+        var sai = g.alunos.length - at;
+        d.appendChild(el('small', null, g.alunos.length + (g.alunos.length === 1 ? ' aluno · ' : ' alunos · ') + at + (at === 1 ? ' ativo' : ' ativos') + (sai ? ' · ' + sai + (sai === 1 ? ' saiu' : ' saíram') : '')));
+        d.appendChild(el('p', null, g.alunos.slice(0, 4).map(function (a) { return a.numero + ' ' + a.nome; }).join(' · ') + (g.alunos.length > 4 ? ' …' : '')));
+        cPrev.appendChild(d);
+      });
+      if (semT) cPrev.appendChild(el('p', 'erro', semT + ' linhas ficaram sem turma e não serão importadas.'));
+      var bi = el('button', 'btn btn-pri', 'Importar ' + tot + ' alunos'); bi.type = 'button'; bi.onclick = function () { importar(bi); };
+      var bc = el('button', 'btn', 'Cancelar'); bc.type = 'button'; bc.onclick = function () { abrirAdmin('alunos'); };
+      barra.appendChild(bi); barra.appendChild(bc);
+    }
+    function importar(bi) {
+      bi.disabled = true;
+      var res = { turmas: 0, novos: 0, atualizados: 0, saiu: 0 };
+      var existentes = {}; estado.turmas.forEach(function (t) { existentes[chaveT(t)] = t; });
+      var N = window.LUME_IMPORTA.norm;
+      grupos.reduce(function (p, g, gi) {
+        return p.then(function () {
+          bi.textContent = 'Importando ' + (gi + 1) + ' de ' + grupos.length + '…';
+          var t = existentes[chaveT(g.turma)];
+          var pT = t ? Promise.resolve(t) : D.turmas.salvar({ escola_id: e.id, etapa: g.turma.etapa, ano: g.turma.ano, letra: g.turma.letra, turno: g.turma.turno || 'Manhã', ano_letivo: e.ano_letivo })
+            .then(function (n) { res.turmas++; return n; });
+          return pT.then(function (turma) {
+            return D.alunos.listar(turma.id).then(function (atuais) {
+              var porNome = {}; atuais.forEach(function (a) { porNome[N(a.nome)] = a; });
+              var vistos = {}, novos = [], mudar = [];
+              g.alunos.forEach(function (a) {
+                var k = N(a.nome); vistos[k] = true; var x = porNome[k];
+                if (!x) novos.push({ escola_id: e.id, turma_id: turma.id, numero: a.numero, nome: a.nome, ativo: a.ativo });
+                else if (x.numero !== a.numero || x.ativo !== a.ativo) mudar.push(Object.assign({}, x, { numero: a.numero, ativo: a.ativo }));
+              });
+              if (marcarSaida) atuais.forEach(function (x) { if (!vistos[N(x.nome)] && x.ativo) { mudar.push(Object.assign({}, x, { ativo: false })); res.saiu++; } });
+              var cadeia = novos.length ? D.alunos.salvarVarios(novos).then(function () { res.novos += novos.length; }) : Promise.resolve();
+              return mudar.reduce(function (q, m) { return q.then(function () { return D.alunos.salvar(m).then(function () { res.atualizados++; }); }); }, cadeia);
+            });
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        var txt = res.novos + ' alunos novos' + (res.turmas ? ', ' + res.turmas + (res.turmas === 1 ? ' turma criada' : ' turmas criadas') : '') + (res.atualizados ? ', ' + res.atualizados + ' atualizados' : '') + '.';
+        aviso('Importação concluída: ' + txt);
+        abrirAdmin('alunos');
+      }).catch(function (x) { falhou(x); bi.disabled = false; bi.textContent = 'Tentar de novo'; });
+    }
+    prepararAba();
+  }
+
   /* ---------- administração ---------- */
   var ABAS_ADMIN = [['escola', 'Escola'], ['turmas', 'Turmas'], ['alunos', 'Alunos'], ['pessoas', 'Pessoas'], ['grade', 'Grade']];
   function abrirAdmin(aba) {
@@ -1877,14 +2050,20 @@
   function admAlunos(box) {
     var e = estado.perfil.escola;
     carregarTurmas().then(function (ts) {
-      if (!ts.length) { var c = el('div', 'card'); c.appendChild(el('p', 'ajuda', 'Cadastre as turmas primeiro (aba Turmas).')); box.appendChild(c); return; }
+      if (!ts.length) {
+        var c = el('div', 'card'); c.appendChild(el('h2', null, 'Nenhuma turma ainda'));
+        c.appendChild(el('p', 'ajuda', 'Importe a lista de alunos da SED (Excel ou CSV): o app cria as turmas e cadastra os alunos. Ou cadastre as turmas na aba Turmas.'));
+        var bImp0 = el('button', 'btn btn-pri', '＋ Importar planilha de alunos'); bImp0.type = 'button'; bImp0.style.marginTop = '10px'; bImp0.onclick = abrirImportacao; c.appendChild(bImp0);
+        box.appendChild(c); return;
+      }
       var sel = el('select'); ts.forEach(function (t) { var o = el('option', null, 'Turma ' + nomeTurma(t)); o.value = t.id; sel.appendChild(o); });
       if (estado.turma && ts.some(function (t) { return t.id === estado.turma.id; })) sel.value = estado.turma.id;
       var topo = el('div', 'card form'); topo.appendChild(campo('Turma', sel));
       var acoes = el('div', 'acoes');
       var b1 = el('button', 'btn btn-pri', '+ Aluno'); b1.type = 'button';
       var b2 = el('button', 'btn', '+ Vários de uma vez'); b2.type = 'button';
-      acoes.appendChild(b1); acoes.appendChild(b2); topo.appendChild(acoes);
+      var bImp = el('button', 'btn', '＋ Importar planilha (Excel/CSV)'); bImp.type = 'button'; bImp.onclick = abrirImportacao;
+      acoes.appendChild(b1); acoes.appendChild(b2); acoes.appendChild(bImp); topo.appendChild(acoes);
       topo.appendChild(el('p', 'ajuda', 'Guarde só o nome e o número de chamada. Não coloque RA, data de nascimento ou outros dados pessoais.'));
       var lista = el('div', 'card'); var h = el('h2', null, 'Alunos'); lista.appendChild(h); var ul = el('ul', 'lista'); lista.appendChild(ul);
       var atuais = [];
