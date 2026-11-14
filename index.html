@@ -371,6 +371,7 @@
   /* importação de alunos */
   .imp-grupo { border-left: 4px solid var(--cor, var(--line)); padding: 8px 0 8px 12px; margin-top: 10px; display: grid; gap: 2px; }
   .imp-grupo small { color: var(--muted); } .imp-grupo p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+  .barra-salvar:empty { display: none; }
   .marca-linha { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -1853,12 +1854,19 @@
       var semTurma = det.cols.turma < 0 && det.cols.serie < 0;
       if (semTurma) {
         var lt = el('div', 'linha');
-        var ss = seletorSerie(padrao ? valorSerie(padrao) : 'EF-1'), le = input('text', padrao ? padrao.letra : ''); le.maxLength = 12; le.placeholder = 'A';
+        var ss = seletorSerie(padrao ? valorSerie(padrao) : 'EF-1'), le = input('text', padrao ? padrao.letra : ''); le.maxLength = 12; le.placeholder = 'Digite: A, B…';
         var tu = seletorTurno(padrao && padrao.turno ? padrao.turno : 'Manhã');
         function atualizarPadrao() { var sr = lerSerie(ss); padrao = le.value.trim() ? { etapa: sr.etapa, ano: sr.ano, letra: le.value.trim().length <= 2 ? le.value.trim().toUpperCase() : le.value.trim(), turno: tu.value } : null; desenharPrevia(); }
         ss.onchange = le.oninput = tu.onchange = atualizarPadrao;
         cCol.appendChild(el('p', 'ajuda', padrao ? 'A planilha não tem coluna de turma; achei a turma no título: confira.' : 'A planilha não tem coluna de turma. Diga de qual turma é esta lista:'));
-        lt.appendChild(campo('Ano / série', ss)); lt.appendChild(campo('Turma', le)); lt.appendChild(campo('Turno', tu)); cCol.appendChild(lt);
+        if (estado.turmas.length) {
+          var jaT = el('select'); var oj = el('option', null, '— escolher —'); oj.value = ''; jaT.appendChild(oj);
+          estado.turmas.forEach(function (t) { var o = el('option', null, 'Turma ' + nomeTurma(t) + ' · ' + t.turno); o.value = t.id; jaT.appendChild(o); });
+          jaT.onchange = function () { var t = estado.turmas.filter(function (x) { return x.id === jaT.value; })[0]; if (!t) return; ss.value = valorSerie(t); le.value = t.letra; tu.value = t.turno; atualizarPadrao(); };
+          cCol.appendChild(campo('Turma que já está no app', jaT));
+          cCol.appendChild(el('p', 'ajuda', 'Ou, para uma turma nova, preencha:'));
+        }
+        lt.appendChild(campo('Ano / série', ss)); lt.appendChild(campo('Turma (letra)', le)); lt.appendChild(campo('Turno', tu)); cCol.appendChild(lt);
       }
       var cb = input('checkbox'); cb.checked = marcarSaida; cb.onchange = function () { marcarSaida = cb.checked; };
       var lb = el('label', 'marca-linha'); lb.appendChild(cb); lb.appendChild(document.createTextNode(' Marcar como "saiu" quem está no app mas não aparece nesta planilha (só nas turmas da planilha)'));
@@ -1874,7 +1882,7 @@
       var semT = alunos.filter(function (a) { return !a.turma; }).length;
       var porT = {}; grupos = [];
       alunos.forEach(function (a) { if (!a.turma) return; var k = chaveT(a.turma); if (!porT[k]) { porT[k] = { turma: a.turma, alunos: [] }; grupos.push(porT[k]); } porT[k].alunos.push(a); });
-      if (!grupos.length) { cPrev.appendChild(el('p', 'erro', semT ? 'Não consegui descobrir a turma dos alunos. Escolha a coluna de turma ou digite a turma acima.' : 'Nenhum aluno encontrado abaixo da linha do cabeçalho.')); return; }
+      if (!grupos.length) { cPrev.appendChild(el('p', 'erro', semT ? (det.cols.turma < 0 && det.cols.serie < 0 ? 'Falta dizer a turma: escolha uma turma do app ou digite a letra no campo "Turma (letra)" acima.' : 'Não consegui descobrir a turma dos alunos. Confira a coluna de turma acima.') : 'Nenhum aluno encontrado abaixo da linha do cabeçalho.')); return; }
       var existentes = {}; estado.turmas.forEach(function (t) { existentes[chaveT(t)] = t; });
       var tot = 0;
       grupos.forEach(function (g) {
@@ -1887,7 +1895,7 @@
         cPrev.appendChild(d);
       });
       if (semT) cPrev.appendChild(el('p', 'erro', semT + ' linhas ficaram sem turma e não serão importadas.'));
-      var bi = el('button', 'btn btn-pri', 'Importar ' + tot + ' alunos'); bi.type = 'button'; bi.onclick = function () { importar(bi); };
+      var bi = el('button', 'btn btn-pri', 'Importar ' + tot + (tot === 1 ? ' aluno' : ' alunos')); bi.type = 'button'; bi.onclick = function () { importar(bi); };
       var bc = el('button', 'btn', 'Cancelar'); bc.type = 'button'; bc.onclick = function () { abrirAdmin('alunos'); };
       barra.appendChild(bi); barra.appendChild(bc);
     }
