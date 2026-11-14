@@ -126,13 +126,13 @@
     D.cal = {
       ler: function (escola, ano) {
         return Promise.all([
-          sb.from('calendario').select('data,codigos').eq('escola_id', escola).gte('data', ano + '-01-01').lte('data', ano + '-12-31').then(ok),
+          sb.from('calendario').select('data,codigos,obs').eq('escola_id', escola).gte('data', ano + '-01-01').lte('data', ano + '-12-31').then(ok),
           sb.from('calendario_ano').select('bimestres').eq('escola_id', escola).eq('ano', ano).maybeSingle().then(ok)
-        ]).then(function (r) { var dias = {}; r[0].forEach(function (d) { dias[d.data] = d.codigos; }); return { dias: dias, bimestres: (r[1] && r[1].bimestres) || [] }; });
+        ]).then(function (r) { var dias = {}, obs = {}; r[0].forEach(function (d) { if (d.codigos) dias[d.data] = d.codigos; if (d.obs) obs[d.data] = d.obs; }); return { dias: dias, obs: obs, bimestres: (r[1] && r[1].bimestres) || [] }; });
       },
       salvarDias: function (escola, lista) {
-        var apagar = lista.filter(function (d) { return !d.codigos; }).map(function (d) { return d.data; }), gravar = lista.filter(function (d) { return d.codigos; });
-        var p = gravar.length ? sb.from('calendario').upsert(gravar.map(function (d) { return { escola_id: escola, data: d.data, codigos: d.codigos }; })).then(ok) : Promise.resolve();
+        var apagar = lista.filter(function (d) { return !d.codigos && !d.obs; }).map(function (d) { return d.data; }), gravar = lista.filter(function (d) { return d.codigos || d.obs; });
+        var p = gravar.length ? sb.from('calendario').upsert(gravar.map(function (d) { return { escola_id: escola, data: d.data, codigos: d.codigos || '', obs: d.obs || '' }; })).then(ok) : Promise.resolve();
         return p.then(function () { return apagar.length ? sb.from('calendario').delete().eq('escola_id', escola).in('data', apagar).then(ok) : null; });
       },
       salvarBimestres: function (escola, ano, bims) { return sb.from('calendario_ano').upsert({ escola_id: escola, ano: ano, bimestres: bims }).then(ok); }
@@ -368,9 +368,10 @@
       apagarTurma: function (av, turma) { return mudar(function (b) { b.notas = b.notas.filter(function (x) { return !(x.avaliacao_id === av && x.turma_id === turma); }); }); }
     };
     D.cal = {
-      ler: function (escola, ano) { var b = ler(), dias = {}; Object.keys(b.calendario[escola] || {}).forEach(function (k) { if (k.slice(0, 4) === String(ano)) dias[k] = b.calendario[escola][k]; });
-        return espera({ dias: dias, bimestres: (b.calendario_ano[escola + '|' + ano] || []) }); },
-      salvarDias: function (escola, lista) { return mudar(function (b) { exigir(b, escola); var c = b.calendario[escola] = b.calendario[escola] || {}; lista.forEach(function (d) { if (d.codigos) c[d.data] = d.codigos; else delete c[d.data]; }); }); },
+      ler: function (escola, ano) { var b = ler(), dias = {}, obs = {}, c = b.calendario[escola] || {};
+        Object.keys(c).forEach(function (k) { if (k.slice(0, 4) !== String(ano)) return; var v = typeof c[k] === 'string' ? { codigos: c[k], obs: '' } : c[k]; if (v.codigos) dias[k] = v.codigos; if (v.obs) obs[k] = v.obs; });
+        return espera({ dias: dias, obs: obs, bimestres: (b.calendario_ano[escola + '|' + ano] || []) }); },
+      salvarDias: function (escola, lista) { return mudar(function (b) { exigir(b, escola); var c = b.calendario[escola] = b.calendario[escola] || {}; lista.forEach(function (d) { if (d.codigos || d.obs) c[d.data] = { codigos: d.codigos || '', obs: d.obs || '' }; else delete c[d.data]; }); }); },
       salvarBimestres: function (escola, ano, bims) { return mudar(function (b) { exigir(b, escola); b.calendario_ano[escola + '|' + ano] = bims; }); }
     };
     D.descImp = {

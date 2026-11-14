@@ -395,6 +395,7 @@
   .cal-dia.cal-est { background: color-mix(in srgb, var(--accent) 22%, var(--card)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
   .cal-dia.cal-evt { background: color-mix(in srgb, var(--a3) 14%, var(--card)); border-color: color-mix(in srgb, var(--a3) 40%, var(--line)); }
   .cal-vazio { min-height: 52px; }
+  .cal-dia.tem-obs { box-shadow: inset 0 -3px 0 var(--a3); }
   .cal-leg { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
   .cal-leg span { display: inline-flex; align-items: center; gap: 5px; }
   .cal-leg i { width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--card); }
@@ -779,6 +780,37 @@
     }).catch(falhou);
   }
 
+  /* ---------- componentes: lista oficial + os criados pela escola ---------- */
+  function compsDaEscola() {
+    var l = (estado.compsExtras || []).slice();
+    (estado.avaliacoes || []).forEach(function (a) { (a.questoes || []).forEach(function (q) { if (q.comp && l.indexOf(q.comp) === -1) l.push(q.comp); }); });
+    return l.filter(function (c) { return !M.COMPONENTES.some(function (k) { return k[0] === c; }); });
+  }
+  // select de componente com "＋ Outro componente…" (a escola escreve o nome)
+  function seletorComponente(valor, vazio, aoMudar) {
+    var s = el('select');
+    if (vazio) { var o0 = el('option', null, vazio); o0.value = ''; s.appendChild(o0); }
+    M.COMPONENTES.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; s.appendChild(o); });
+    var extras = compsDaEscola(); if (valor && extras.indexOf(valor) === -1 && !M.COMPONENTES.some(function (k) { return k[0] === valor; })) extras.push(valor);
+    extras.forEach(function (c) { var o = el('option', null, c); o.value = c; s.appendChild(o); });
+    var on = el('option', null, '＋ Outro componente…'); on.value = '__novo'; s.appendChild(on);
+    s.value = valor || ''; var anterior = s.value;
+    s.onchange = function () {
+      if (s.value !== '__novo') { anterior = s.value; aoMudar(s.value); return; }
+      s.value = anterior;
+      var i = input('text'); i.maxLength = 30; i.placeholder = 'Ex.: Projeto de Vida, Robótica, Redação';
+      var corpo = el('div', 'form'); corpo.appendChild(campo('Nome do componente', i));
+      modal('Novo componente', corpo, [['Cancelar', '', fecharModal], ['Usar', 'btn-pri', function () {
+        var nome = i.value.trim().replace(/\s+/g, ' '); if (nome.length < 2) { aviso('Digite o nome do componente.', 'err'); return; }
+        var cod = window.LUME_IMPORTA ? window.LUME_IMPORTA.compDe(nome) : nome;
+        estado.compsExtras = (estado.compsExtras || []).concat([cod]);
+        if (![].some.call(s.options, function (o) { return o.value === cod; })) { var o = el('option', null, M.nomeComp(cod)); o.value = cod; s.insertBefore(o, on); }
+        s.value = cod; anterior = cod; fecharModal(); aoMudar(cod);
+      }]]);
+    };
+    return s;
+  }
+
   /* =====================  Monitoramento: avaliações (fase 2)  ===================== */
   var M = window.LUME_MODELOS, C = window.LUME_CALC;
   function pct(v) { return v == null ? '—' : Math.round(v * 100) + '%'; }
@@ -896,12 +928,12 @@
     var linhasComp = el('div', 'form'); cq.appendChild(linhasComp);
     function contagem() { var o = []; av.questoes.forEach(function (q) { var u = o[o.length - 1]; if (u && u[0] === q.comp) u[1]++; else o.push([q.comp, 1]); }); return o; }
     var blocos = contagem(); if (!blocos.length) blocos = [['LP', 10]];
-    function seletorComp(v) { var s = el('select'); M.COMPONENTES.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; s.appendChild(o); }); s.value = v; return s; }
+
     function desenharBlocos() {
       linhasComp.textContent = '';
       blocos.forEach(function (b, i) {
-        var li = el('div', 'linha'), sc = seletorComp(b[0]), nq = input('number', b[1]); nq.min = 1; nq.max = 120;
-        sc.onchange = function () { b[0] = sc.value; aplicarBlocos(); }; nq.onchange = function () { b[1] = Math.max(1, Math.min(120, Number(nq.value) || 1)); aplicarBlocos(); };
+        var li = el('div', 'linha'), sc = seletorComponente(b[0], null, function (v) { b[0] = v; aplicarBlocos(); }), nq = input('number', b[1]); nq.min = 1; nq.max = 120;
+        nq.onchange = function () { b[1] = Math.max(1, Math.min(120, Number(nq.value) || 1)); aplicarBlocos(); };
         li.appendChild(campo('Componente', sc)); var cn = campo('Nº de questões', nq); cn.style.flex = '0 0 120px'; li.appendChild(cn);
         if (blocos.length > 1) { var x = el('button', 'btn btn-peq', 'Tirar'); x.type = 'button'; x.onclick = function () { blocos.splice(i, 1); aplicarBlocos(); desenharBlocos(); }; li.appendChild(x); }
         linhasComp.appendChild(li);
@@ -1285,8 +1317,8 @@
           var g = grade.filter(function (x) { return x.turma_id === t.id && x.dia === diaAtivo && x.aula === h.aula; })[0] || { escola_id: e.id, turma_id: t.id, dia: diaAtivo, aula: h.aula, componente: '', professor_id: null, professor_nome: '' };
           var li = el('div', 'gd-li');
           var cab = el('div', 'gd-cab'); cab.appendChild(el('b', null, h.aula + 'ª aula')); cab.appendChild(el('small', null, (h.inicio || '') + (h.fim ? '–' + h.fim : ''))); li.appendChild(cab);
-          var sc = el('select'); var c0 = el('option', null, '— componente —'); c0.value = ''; sc.appendChild(c0);
-          M.COMPONENTES.forEach(function (c) { var o = el('option', null, c[1]); o.value = c[0]; sc.appendChild(o); }); sc.value = g.componente || '';
+          estado.compsExtras = (estado.compsExtras || []).concat(grade.map(function (x) { return x.componente; }).filter(function (c, i, a) { return c && a.indexOf(c) === i; }));
+          var sc = seletorComponente(g.componente || '', '— componente —', function () { gravar(); });
           var sp = seletorProf(g), nomeLivre = input('text', g.professor_id ? '' : g.professor_nome); nomeLivre.placeholder = 'Nome do professor'; nomeLivre.classList.toggle('hidden', sp.value !== 'outro');
           sc.setAttribute('aria-label', h.aula + 'ª aula componente'); sp.setAttribute('aria-label', h.aula + 'ª aula professor'); nomeLivre.setAttribute('aria-label', h.aula + 'ª aula nome do professor');
           function gravar() {
@@ -1299,7 +1331,6 @@
               aviso('Salvo: ' + nomeTurma(t) + ', ' + DIAS[diaAtivo].toLowerCase() + ', ' + h.aula + 'ª aula.');
             }).catch(falhou);
           }
-          sc.onchange = gravar;
           sp.onchange = function () { nomeLivre.classList.toggle('hidden', sp.value !== 'outro'); if (sp.value === 'outro') nomeLivre.focus(); else gravar(); };
           nomeLivre.onchange = gravar;
           var ls = el('div', 'gd-campos'); ls.appendChild(sc); ls.appendChild(sp); ls.appendChild(nomeLivre); li.appendChild(ls);
@@ -2371,6 +2402,12 @@
     var e = estado.perfil.escola;
     return D.cal.ler(e.id, e.ano_letivo).then(function (c) { estado.cal = c; return c; });
   }
+  // grava dias sem perder o que não foi informado (códigos ou observação)
+  function calSalvar(lista) {
+    return D.cal.salvarDias(estado.perfil.escola.id, lista.map(function (d) {
+      return { data: d.data, codigos: d.codigos !== undefined ? d.codigos : (estado.cal.dias[d.data] || ''), obs: d.obs !== undefined ? d.obs : ((estado.cal.obs || {})[d.data] || '') };
+    }));
+  }
   function calCods(iso) { return CAL.cods((estado.cal && estado.cal.dias[iso]) || ''); }
   function calLetivosEntre(de, ate) { var n = 0; Object.keys(estado.cal.dias).forEach(function (iso) { if (iso >= de && iso <= ate && CAL.letivo(CAL.cods(estado.cal.dias[iso]))) n++; }); return n; }
   function calBimestreDe(iso) { return (estado.cal.bimestres || []).filter(function (b) { return iso >= b[1] && iso <= b[2]; })[0]; }
@@ -2426,15 +2463,18 @@
       for (var d = 1; d <= ultimo; d++) {
         var iso = mes + '-' + ('0' + d).slice(-2), cs = calCods(iso), dw = new Date(y, m - 1, d).getDay();
         var tp = cs.length ? CAL.tipo(cs) : (dw === 0 || dw === 6 ? 'fds' : '');
-        var b = el('button', 'cal-dia cal-' + (tp || 'nada') + (iso === hoje ? ' hoje' : '')); b.type = 'button';
+        var ob = (cal.obs || {})[iso] || '';
+        if (!cs.length && ob) tp = 'evt';
+        var b = el('button', 'cal-dia cal-' + (tp || 'nada') + (iso === hoje ? ' hoje' : '') + (ob ? ' tem-obs' : '')); b.type = 'button';
         b.appendChild(el('b', null, String(d)));
         var mostra = cs.filter(function (c) { return c !== 'L' && c !== 'S' && c !== 'D'; });
         if (mostra.length) b.appendChild(el('small', null, mostra.join('+')));
         else if (cs.indexOf('L') !== -1) b.appendChild(el('small', 'cal-l', 'L'));
-        b.setAttribute('aria-label', d + ' de ' + MESES[m - 1] + (cs.length ? ': ' + cs.map(function (c) { return CAL.COD[c][0]; }).join(', ') : ''));
+        if (ob && !mostra.length) b.appendChild(el('small', null, '★'));
+        b.setAttribute('aria-label', d + ' de ' + MESES[m - 1] + (cs.length ? ': ' + cs.map(function (c) { return CAL.COD[c][0]; }).join(', ') : '') + (ob ? '. ' + ob : ''));
         (function (iso2) { b.onclick = function () { calDia(iso2); }; })(iso);
         g.appendChild(b);
-        if (mostra.length) eventos.push([iso, mostra]);
+        if (mostra.length || ob) eventos.push([iso, mostra, ob]);
       }
       cm.appendChild(g);
       var leg = el('div', 'cal-leg');
@@ -2444,7 +2484,7 @@
       if (eventos.length) {
         var ce = el('div', 'card'); ce.appendChild(el('h3', null, 'Neste mês'));
         var ul = el('ul', 'lista');
-        eventos.forEach(function (ev) { var li = el('li'); li.appendChild(el('span', 'n', ev[0].slice(8))); li.appendChild(el('span', 'nome', ev[1].map(function (c) { return CAL.COD[c][0]; }).join(' · '))); ul.appendChild(li); });
+        eventos.forEach(function (ev) { var li = el('li'); li.appendChild(el('span', 'n', ev[0].slice(8))); var nm = el('span', 'nome', ev[1].map(function (c) { return CAL.COD[c][0]; }).join(' · ') || ev[2]); if (ev[1].length && ev[2]) nm.appendChild(el('small', null, ev[2])); li.appendChild(nm); ul.appendChild(li); });
         ce.appendChild(ul); box.appendChild(ce);
       }
     }).catch(falhou);
@@ -2453,9 +2493,11 @@
     var cs = calCods(iso), corpo = el('div', 'form');
     var dt = deIso(iso), titulo = DIAS[dt.getDay()] ? DIAS[dt.getDay()] + ', ' + dataBr(iso) : (dt.getDay() === 0 ? 'Domingo, ' : 'Sábado, ') + dataBr(iso);
     var b = calBimestreDe(iso); if (b) corpo.appendChild(el('p', 'ajuda', b[0]));
+    var obsDia = (estado.cal.obs || {})[iso] || '';
     if (!ehGestor()) {
-      corpo.appendChild(el('p', null, cs.length ? cs.map(function (c) { return c + ' – ' + CAL.COD[c][0]; }).join('\n') : 'Sem marcação no calendário.'));
+      corpo.appendChild(el('p', null, cs.length ? cs.map(function (c) { return c + ' – ' + CAL.COD[c][0]; }).join('\n') : (obsDia ? '' : 'Sem marcação no calendário.')));
       corpo.lastChild.style.whiteSpace = 'pre-line';
+      if (obsDia) corpo.appendChild(el('p', null, '★ ' + obsDia));
       modal(titulo, corpo); return;
     }
     corpo.appendChild(el('p', 'ajuda', 'Toque nos códigos do dia (pode marcar mais de um). ' + (CAL.letivo(cs) ? 'Hoje conta como dia letivo.' : '')));
@@ -2467,10 +2509,12 @@
       w.appendChild(bt);
     });
     corpo.appendChild(w);
-    modal(titulo, corpo, [['Cancelar', '', fecharModal], ['Limpar dia', '', function () { sel = []; salvar(); }], ['Salvar', 'btn-pri', function () { salvar(); }]]);
+    var ta = el('textarea'); ta.rows = 2; ta.maxLength = 200; ta.value = obsDia; ta.placeholder = 'Ex.: Festa junina, Mostra cultural, Simulado SARESP…';
+    corpo.appendChild(campo('Evento ou observação da escola (opcional)', ta));
+    modal(titulo, corpo, [['Cancelar', '', fecharModal], ['Limpar dia', '', function () { sel = []; ta.value = ''; salvar(); }], ['Salvar', 'btn-pri', function () { salvar(); }]]);
     function salvar() {
       var ordem = Object.keys(CAL.COD), txt = sel.slice().sort(function (a, b2) { return ordem.indexOf(a) - ordem.indexOf(b2); }).join('+');
-      D.cal.salvarDias(estado.perfil.escola.id, [{ data: iso, codigos: txt }]).then(function () { fecharModal(); aviso('Dia salvo.'); abrirCalendario(estado.calMes); }).catch(falhou);
+      calSalvar([{ data: iso, codigos: txt, obs: ta.value.trim() }]).then(function () { fecharModal(); aviso('Dia salvo.'); abrirCalendario(estado.calMes); }).catch(falhou);
     }
   }
 
@@ -2490,7 +2534,7 @@
       var lista = [];
       bs.forEach(function (b) { for (var iso = b[1]; iso <= b[2]; iso = somaDias(iso, 1)) { var dw = deIso(iso).getDay(); if (dw === 0 || dw === 6) continue; var ja = estado.cal.dias[iso]; if (mant.checked && ja && ja !== 'L') continue; lista.push({ data: iso, codigos: 'L' }); } });
       bg.disabled = true;
-      D.cal.salvarBimestres(e.id, ano, bs).then(function () { return D.cal.salvarDias(e.id, lista); })
+      D.cal.salvarBimestres(e.id, ano, bs).then(function () { return calSalvar(lista); })
         .then(function () { fecharModal(); aviso(lista.length + ' dias letivos marcados.'); abrirCalendario(); }).catch(function (x) { falhou(x); bg.disabled = false; });
     };
     corpo.appendChild(el('small', 'sub', '2. Importar planilha'));
@@ -2502,8 +2546,26 @@
     };
     corpo.appendChild(bm);
     arq.onchange = function () { if (arq.files[0]) lerArquivo(arq.files[0]).then(function (abas) { calImportar(abas, arq.files[0].name); }).catch(falhou); };
-    corpo.appendChild(el('small', 'sub', '3. Calendário homologado em PDF'));
-    corpo.appendChild(el('p', 'ajuda', 'O PDF homologado da SEDUC é uma imagem e o app não consegue ler sozinho. Envie o PDF ao administrador do Lume: ele transforma em planilha para você importar aqui.'));
+    corpo.appendChild(el('small', 'sub', '3. Marcar um período de uma vez'));
+    corpo.appendChild(el('p', 'ajuda', 'Para copiar o calendário homologado (PDF) rápido: marque os blocos inteiros (férias, recesso, semana de estudos intensivos…) aqui e depois toque nos dias avulsos.'));
+    var pd = input('date'), pa = input('date'), pc = el('select');
+    Object.keys(CAL.COD).filter(function (c) { return c !== 'S' && c !== 'D'; }).forEach(function (c) { var o = el('option', null, c + ' – ' + CAL.COD[c][0]); o.value = c; pc.appendChild(o); });
+    var lp = el('div', 'linha'); lp.appendChild(campo('De', pd)); lp.appendChild(campo('Até', pa)); corpo.appendChild(lp);
+    corpo.appendChild(campo('Código', pc));
+    var su = input('checkbox'); su.checked = true; var lsu = el('label', 'marca-linha'); lsu.appendChild(su); lsu.appendChild(document.createTextNode(' Só de segunda a sexta')); corpo.appendChild(lsu);
+    var ac2 = input('checkbox'); ac2.checked = false; var lac = el('label', 'marca-linha'); lac.appendChild(ac2); lac.appendChild(document.createTextNode(' Acrescentar ao que já está no dia (em vez de substituir)')); corpo.appendChild(lac);
+    var bpd = el('button', 'btn btn-pri', 'Marcar período'); bpd.type = 'button'; corpo.appendChild(bpd);
+    bpd.onclick = function () {
+      if (!pd.value || !pa.value || pa.value < pd.value) { aviso('Escolha a data inicial e a final do período.', 'err'); return; }
+      var lista = [];
+      for (var iso = pd.value; iso <= pa.value; iso = somaDias(iso, 1)) {
+        var dw = deIso(iso).getDay(); if (su.checked && (dw === 0 || dw === 6)) continue;
+        var ja = CAL.cods(estado.cal.dias[iso] || ''); if (ac2.checked) { if (ja.indexOf(pc.value) === -1) ja.push(pc.value); } else ja = [pc.value];
+        lista.push({ data: iso, codigos: ja.join('+') });
+      }
+      bpd.disabled = true;
+      calSalvar(lista).then(function () { fecharModal(); aviso(lista.length + ' dias marcados com ' + pc.value + '.'); abrirCalendario(estado.calMes); }).catch(function (x) { falhou(x); bpd.disabled = false; });
+    };
     modal('Preencher o calendário ' + ano, corpo, [['Fechar', '', fecharModal]]);
   }
   function lerDataBr(v) {
@@ -2514,19 +2576,21 @@
     return '';
   }
   function calImportar(abas, nomeArq) {
-    var N = window.LUME_IMPORTA.norm, dias = {}, lidas = 0, ignoradas = 0;
+    var N = window.LUME_IMPORTA.norm, dias = {}, obsImp = {}, lidas = 0, ignoradas = 0;
     abas.forEach(function (a) {
       var L = a.linhas, cab = -1, cD = -1, cC = -1, cT = -1;
       for (var r = 0; r < Math.min(L.length, 15) && cab < 0; r++) (L[r] || []).forEach(function (h, i) { var n = N(h); if (/^DATA|^DIA$/.test(n)) cD = i; else if (/^(CODIGO|CODIGOS|SIGLA|LEGENDA)/.test(n)) cC = i; else if (/^(EVENTO|DESCRICAO|OBSERVACAO|ATIVIDADE)/.test(n)) cT = i; if (cD >= 0 && (cC >= 0 || cT >= 0)) cab = r; });
       if (cab < 0) return;
       for (r = cab + 1; r < L.length; r++) {
         var l = L[r] || [], iso = lerDataBr(l[cD]); if (!iso) continue;
-        var cs = cC >= 0 ? CAL.cods(String(l[cC] || '').toUpperCase()) : [];
-        if (!cs.length && cT >= 0) { var k = CAL.codigoDeTexto(l[cT]); if (k) cs = [k]; }
-        if (!cs.length) { ignoradas++; continue; }
+        var cs = cC >= 0 ? CAL.cods(String(l[cC] || '').toUpperCase()) : [], ob = cT >= 0 ? String(l[cT] || '').trim().slice(0, 200) : '';
+        if (!cs.length && ob) { var k = CAL.codigoDeTexto(ob); if (k) cs = [k]; }
+        if (ob) obsImp[iso] = ob;
+        if (!cs.length && !ob) { ignoradas++; continue; }
         var ja = dias[iso] ? dias[iso].split('+') : []; cs.forEach(function (c) { if (ja.indexOf(c) === -1) ja.push(c); }); dias[iso] = ja.join('+'); lidas++;
       }
     });
+    Object.keys(obsImp).forEach(function (d) { if (dias[d] === undefined) dias[d] = ''; });
     var datas = Object.keys(dias).sort();
     if (!datas.length) { aviso('Não encontrei as colunas Data e Códigos (ou Descrição) na planilha.', 'err'); return; }
     // bimestres pelos códigos IBI / FBI
@@ -2542,7 +2606,7 @@
     if (foraAno) corpo.appendChild(el('p', 'erro', foraAno + ' dias são de outro ano (o ano letivo da escola é ' + ano + ') e não aparecerão no calendário deste ano.'));
     modal('Importar calendário', corpo, [['Cancelar', '', fecharModal], ['Importar', 'btn-pri', function () {
       var e = estado.perfil.escola;
-      D.cal.salvarDias(e.id, datas.map(function (d) { return { data: d, codigos: dias[d] }; }))
+      calSalvar(datas.map(function (d) { return { data: d, codigos: dias[d], obs: obsImp[d] !== undefined ? obsImp[d] : undefined }; }))
         .then(function () { return bims.length ? D.cal.salvarBimestres(e.id, ano, bims) : null; })
         .then(function () { fecharModal(); aviso('Calendário importado: ' + datas.length + ' dias.'); abrirCalendario(); }).catch(falhou);
     }]]);
